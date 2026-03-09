@@ -1,4 +1,4 @@
-const CACHE = 'ruben-v1';
+const CACHE = 'ruben-v2';
 const ASSETS = ['/', '/index.html', '/manifest.json'];
 
 self.addEventListener('install', e => {

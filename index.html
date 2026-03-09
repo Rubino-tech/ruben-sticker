@@ -290,7 +290,7 @@ const firebaseConfig = {
   
 let db = null, fbStorage = null, cloudEnabled = false;
 async function initCloud() {
-  const c = FIREBASE_CONFIG;
+  const c = firebaseConfig;
   if (!c.apiKey || !c.projectId) return;
   try {
     const v = '10.11.1', base = `https://www.gstatic.com/firebasejs/${v}`;
