@@ -288,7 +288,7 @@ const firebaseConfig = {
   appId: "1:556124047873:web:3ad74c961be197c4158e00"
 };
   
-let db = null, fbStorage = null, cloudEnabled = false;
+let db = null, cloudEnabled = false;
 async function initCloud() {
   const c = firebaseConfig;
   if (!c.apiKey || !c.projectId) return;
@@ -297,11 +297,9 @@ async function initCloud() {
     await loadScript(`${base}/firebase-app-compat.js`);
     await loadScript(`${base}/firebase-auth-compat.js`);
     await loadScript(`${base}/firebase-firestore-compat.js`);
-    await loadScript(`${base}/firebase-storage-compat.js`);
     firebase.initializeApp(c);
     await firebase.auth().signInAnonymously();
     db = firebase.firestore();
-    try { fbStorage = c.storageBucket ? firebase.storage() : null; } catch(se) { fbStorage = null; console.warn('Storage unavailable:', se.message); }
     cloudEnabled = true;
     console.log('☁️ Cloud sync active');
   } catch(e) { console.warn('Cloud sync unavailable:', e.message); }
@@ -380,23 +378,15 @@ function startApp(){
     });
   };
 
-  // ── Cloud: save a single pin + its photo to Firestore / Storage ──
-  const saveToCloud = async (pin, photoData) => {
+  // ── Cloud: save a single pin to Firestore (photos stored locally only) ──
+  const saveToCloud = async (pin) => {
     if (!cloudEnabled) return;
     try {
-      let photoUrl = null;
-      if (photoData && fbStorage) {
-        const ref = fbStorage.ref('photos/' + pin.id + '.jpg');
-        await ref.putString(photoData, 'data_url', {contentType: 'image/jpeg'});
-        photoUrl = await ref.getDownloadURL();
-      }
       await db.collection('pins').doc(pin.id).set({
         id: pin.id, lat: pin.lat, lng: pin.lng,
         name: pin.name||'', comment: pin.comment||'',
-        date: pin.date, photoUrl: photoUrl||null
+        date: pin.date
       });
-      const idx = pins.findIndex(p => p.id === pin.id);
-      if (idx >= 0 && photoUrl) { pins[idx].photoUrl = photoUrl; renderPins(); }
     } catch(e) { console.warn('Cloud save failed:', e.message); }
   };
 
@@ -462,7 +452,7 @@ function startApp(){
     if(!savePins(pins)){pins.pop();btn.textContent='📌 PIN IT!';btn.disabled=false;alert('Opslag vol!');return;}
     renderPins();btn.textContent='📌 PIN IT!';btn.disabled=false;
     closeAdd();
-    saveToCloud(pin,capturedPhoto);
+    saveToCloud(pin);
   });
 
   // ── View sheet ──
