@@ -488,6 +488,9 @@ function startApp(){
       const cpIds=new Set(cp.map(c=>c.id));
       const lo=pins.filter(p=>!cpIds.has(p.id));
       pins=[...cp,...lo]; savePins(pins); renderPins();
+      // Upload any local-only pins that haven't reached Firestore yet
+      // (e.g. pins added before cloud sync was ready, or while offline)
+      lo.forEach(pin=>saveToCloud(pin));
     },err=>console.warn('Firestore error:',err));
   });
 }
