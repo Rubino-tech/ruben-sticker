@@ -45,10 +45,11 @@ service firebase.storage {
 1. In the left sidebar click **Build → Authentication**
 2. Click **"Get started"** → **Sign-in method** tab → **Anonymous** → enable → Save
 
-### Step 5 — Paste your config into the app
-Open **index.html** in a text editor, find the `FIREBASE_CONFIG` block near the top of the `<script>` section, and fill in the values from Step 1:
+### Step 5 — Create your config file
+1. Copy **`firebase-config.example.js`** to a new file named **`firebase-config.js`** (same folder)
+2. Open **`firebase-config.js`** in a text editor and fill in the values from Step 1:
 ```js
-const FIREBASE_CONFIG = {
+const firebaseConfig = {
   apiKey: "AIza...",
   authDomain: "your-project.firebaseapp.com",
   projectId: "your-project-id",
@@ -57,7 +58,13 @@ const FIREBASE_CONFIG = {
   appId: "1:123456789:web:abc123"
 };
 ```
-Save the file, redeploy to GitHub Pages, and all users will now share the same map! 🎉
+3. Save the file and deploy it together with the other app files.
+
+> **About Firebase web keys:** Firebase API keys used in web apps are not secret in the traditional sense — they are always visible in the browser and are required for the client to connect to Firebase. The real protection is **Firebase Security Rules** (configured in Steps 2–4 above) and the **Authorized Domains** list in Firebase Authentication settings. Make sure to add only your own domain(s) there.
+>
+> **What `.gitignore` protects:** The `firebase-config.js` file is listed in `.gitignore` so it will never be accidentally committed to a *public* version control history. This prevents your credentials from appearing in GitHub search results or forks. It does not prevent the file from being served by a static host — that is intentional, as the browser must be able to load it.
+>
+> For extra protection, enable **Firebase App Check** (Build → App Check in the Firebase console) to restrict API usage to requests coming from your registered domain only.
 
 ---
 
