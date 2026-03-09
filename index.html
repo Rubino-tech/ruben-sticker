@@ -275,9 +275,41 @@ const $ = id => document.getElementById(id);
 const ls = { get:(k)=>{ try{return localStorage.getItem(k);}catch(e){return null;} }, set:(k,v)=>{ try{localStorage.setItem(k,v);return true;}catch(e){return false;} } };
 const LS_PINS = 'rsm-pins-v4';
 const loadPins  = () => { try{return JSON.parse(ls.get(LS_PINS)||'[]');}catch(e){return[];} };
-const savePins  = p => ls.set(LS_PINS, JSON.stringify(p.map(({id,lat,lng,name,comment,date})=>({id,lat,lng,name:name||'',comment:comment||'',date}))));
+const savePins  = p => ls.set(LS_PINS, JSON.stringify(p.map(({id,lat,lng,name,comment,date,photoUrl})=>({id,lat,lng,name:name||'',comment:comment||'',date,photoUrl:photoUrl||null}))));
 const loadPhoto = id => ls.get('rsm-p-'+id);
 const savePhoto = (id,d) => ls.set('rsm-p-'+id,d);
+
+// ── Firebase Cloud Sync ──
+// 👉 Create a FREE Firebase project at https://console.firebase.google.com
+//    (click "Add project" → follow the wizard → click the </> Web icon → copy the config below)
+//    Then enable Firestore Database + Storage in the Firebase console.
+//    Leave the values empty ("") to run fully offline (local-only mode).
+const FIREBASE_CONFIG = {
+  apiKey: "",
+  authDomain: "",
+  projectId: "",
+  storageBucket: "",
+  messagingSenderId: "",
+  appId: ""
+};
+let db = null, fbStorage = null, cloudEnabled = false;
+async function initCloud() {
+  const c = FIREBASE_CONFIG;
+  if (!c.apiKey || !c.projectId) return;
+  try {
+    const v = '10.11.1', base = `https://www.gstatic.com/firebasejs/${v}`;
+    await loadScript(`${base}/firebase-app-compat.js`);
+    await loadScript(`${base}/firebase-auth-compat.js`);
+    await loadScript(`${base}/firebase-firestore-compat.js`);
+    await loadScript(`${base}/firebase-storage-compat.js`);
+    firebase.initializeApp(c);
+    await firebase.auth().signInAnonymously();
+    db = firebase.firestore();
+    try { fbStorage = c.storageBucket ? firebase.storage() : null; } catch(se) { fbStorage = null; console.warn('Storage unavailable:', se.message); }
+    cloudEnabled = true;
+    console.log('☁️ Cloud sync active');
+  } catch(e) { console.warn('Cloud sync unavailable:', e.message); }
+}
 
 // ── Image compression ──
 const compress = (url,maxW=900,q=.65) => new Promise(res=>{
@@ -346,10 +378,30 @@ function startApp(){
   const renderPins = () => {
     cg.clearLayers();
     pins.forEach(pin=>{
-      const m=L.marker([pin.lat,pin.lng],{icon:makePin(loadPhoto(pin.id))});
+      const m=L.marker([pin.lat,pin.lng],{icon:makePin(loadPhoto(pin.id)||pin.photoUrl||null)});
       m.on('click',()=>openView(pin));
       cg.addLayer(m);
     });
+  };
+
+  // ── Cloud: save a single pin + its photo to Firestore / Storage ──
+  const saveToCloud = async (pin, photoData) => {
+    if (!cloudEnabled) return;
+    try {
+      let photoUrl = null;
+      if (photoData && fbStorage) {
+        const ref = fbStorage.ref('photos/' + pin.id + '.jpg');
+        await ref.putString(photoData, 'data_url', {contentType: 'image/jpeg'});
+        photoUrl = await ref.getDownloadURL();
+      }
+      await db.collection('pins').doc(pin.id).set({
+        id: pin.id, lat: pin.lat, lng: pin.lng,
+        name: pin.name||'', comment: pin.comment||'',
+        date: pin.date, photoUrl: photoUrl||null
+      });
+      const idx = pins.findIndex(p => p.id === pin.id);
+      if (idx >= 0 && photoUrl) { pins[idx].photoUrl = photoUrl; renderPins(); }
+    } catch(e) { console.warn('Cloud save failed:', e.message); }
   };
 
   // ── Sheet helpers ──
@@ -407,17 +459,19 @@ function startApp(){
     btn.textContent='⏳ Opslaan...';btn.disabled=true;
     ls.set('rsm-last-name',name);
     const c=map.getCenter();
-    const pin={id:Date.now()+'-'+Math.floor(Math.random()*99999),lat:c.lat,lng:c.lng,name,comment:$('comment-inp').value.trim(),date:new Date().toISOString()};
-    if(pendingPhoto) savePhoto(pin.id,pendingPhoto);
+    const pin={id:Date.now().toString(36)+'-'+Math.random().toString(36).slice(2),lat:c.lat,lng:c.lng,name,comment:$('comment-inp').value.trim(),date:new Date().toISOString()};
+    const capturedPhoto=pendingPhoto;
+    if(capturedPhoto) savePhoto(pin.id,capturedPhoto);
     pins.push(pin);
     if(!savePins(pins)){pins.pop();btn.textContent='📌 PIN IT!';btn.disabled=false;alert('Opslag vol!');return;}
     renderPins();btn.textContent='📌 PIN IT!';btn.disabled=false;
     closeAdd();
+    saveToCloud(pin,capturedPhoto);
   });
 
   // ── View sheet ──
   function openView(pin){
-    const photo=loadPhoto(pin.id);
+    const photo=loadPhoto(pin.id)||pin.photoUrl||null;
     const d=new Date(pin.date);
     $('vmeta').textContent='📅 '+d.toLocaleDateString('nl-NL',{weekday:'short',year:'numeric',month:'short',day:'numeric'})+' · '+d.toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'});
     $('vavatar').src=photo||RUBEN;
@@ -440,6 +494,16 @@ function startApp(){
   }
   $('loading').style.opacity='0';
   setTimeout(()=>$('loading').style.display='none',400);
+  // ── Cloud sync (background — pins appear as soon as Firebase is ready) ──
+  initCloud().then(()=>{
+    if(!cloudEnabled) return;
+    db.collection('pins').onSnapshot(snap=>{
+      const cp=[]; snap.forEach(d=>cp.push(d.data()));
+      const cpIds=new Set(cp.map(c=>c.id));
+      const lo=pins.filter(p=>!cpIds.has(p.id));
+      pins=[...cp,...lo]; savePins(pins); renderPins();
+    },err=>console.warn('Firestore error:',err));
+  });
 }
 
 // ── Boot ──
