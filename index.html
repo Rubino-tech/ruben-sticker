@@ -284,13 +284,13 @@ const savePhoto = (id,d) => ls.set('rsm-p-'+id,d);
 //    (click "Add project" → follow the wizard → click the </> Web icon → copy the config below)
 //    Then enable Firestore Database + Storage in the Firebase console.
 //    Leave the values empty ("") to run fully offline (local-only mode).
-const FIREBASE_CONFIG = {
-  apiKey: "",
-  authDomain: "",
-  projectId: "",
-  storageBucket: "",
-  messagingSenderId: "",
-  appId: ""
+const firebaseConfig = {
+  apiKey: "AIzaSyCbtJp83pLB2bdnklJ3T1aKfKNpDu0ILzc",
+  authDomain: "rubensticker-rs67.firebaseapp.com",
+  projectId: "rubensticker-rs67",
+  storageBucket: "rubensticker-rs67.firebasestorage.app",
+  messagingSenderId: "556124047873",
+  appId: "1:556124047873:web:3ad74c961be197c4158e00"
 };
 let db = null, fbStorage = null, cloudEnabled = false;
 async function initCloud() {
