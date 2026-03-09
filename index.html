@@ -278,12 +278,7 @@ const loadPins  = () => { try{return JSON.parse(ls.get(LS_PINS)||'[]');}catch(e)
 const savePins  = p => ls.set(LS_PINS, JSON.stringify(p.map(({id,lat,lng,name,comment,date,photoUrl})=>({id,lat,lng,name:name||'',comment:comment||'',date,photoUrl:photoUrl||null}))));
 const loadPhoto = id => ls.get('rsm-p-'+id);
 const savePhoto = (id,d) => ls.set('rsm-p-'+id,d);
-
-// ── Firebase Cloud Sync ──
-// 👉 Create a FREE Firebase project at https://console.firebase.google.com
-//    (click "Add project" → follow the wizard → click the </> Web icon → copy the config below)
-//    Then enable Firestore Database + Storage in the Firebase console.
-//    Leave the values empty ("") to run fully offline (local-only mode).
+  
 const firebaseConfig = {
   apiKey: "AIzaSyCbtJp83pLB2bdnklJ3T1aKfKNpDu0ILzc",
   authDomain: "rubensticker-rs67.firebaseapp.com",
@@ -292,6 +287,7 @@ const firebaseConfig = {
   messagingSenderId: "556124047873",
   appId: "1:556124047873:web:3ad74c961be197c4158e00"
 };
+  
 let db = null, fbStorage = null, cloudEnabled = false;
 async function initCloud() {
   const c = FIREBASE_CONFIG;
