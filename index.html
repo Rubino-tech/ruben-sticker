@@ -3,14 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Ruben Sticker">
 <meta name="theme-color" content="#1a1a2e">
 <title>Ruben Sticker Map</title>
-<link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="icon-192.png">
 
 <!-- Leaflet styles -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
@@ -24,7 +18,7 @@
 
 <!-- Loading -->
 <div id="loading">
-  <h1>🌟 Ruben<br>Sticker Map</h1>
+  <h1>Ruben<br>Sticker Map</h1>
   <div class="spinner"></div>
   <p id="loading-msg">Laden...</p>
   <p class="err" id="loading-err">❌ Kon kaart niet laden.<br>Controleer je internet en herlaad de pagina.</p>
@@ -37,7 +31,7 @@
 </div>
 
 <button id="add-pin-btn" aria-label="Pin Ruben">
-  Pin Ruben
+  Pin
   <img id="btn-avatar" src="" alt="Ruben">
 </button>
 
@@ -45,10 +39,6 @@
 <div class="sbackdrop" id="ab"></div>
 <div class="sheet" id="asheet">
   <div class="sheet-handle"></div>
-  <div class="sheet-head">
-    <div><h2>🌟 Drop a Sticker!</h2><div class="sub" id="acoords">📍 Locatie...</div></div>
-    <button class="sheet-x" id="ax">✕</button>
-  </div>
   <div class="sheet-body">
     <div class="field">
       <label>👤 Jouw naam <span class="req">*</span></label>
@@ -71,7 +61,7 @@
       <textarea id="comment-inp" placeholder="Schrijf iets..." rows="3"></textarea>
     </div>
   </div>
-  <div class="sheet-foot"><button class="btn-pin" id="pinbtn">📌 PIN IT!</button></div>
+  <div class="sheet-foot"><button class="btn-pin" id="pinbtn">📌 PIN</button></div>
 </div>
 
 <!-- VIEW SHEET -->
@@ -83,7 +73,6 @@
     <button class="sheet-x" id="vx">✕</button>
   </div>
   <div class="sheet-body">
-    <img class="v-avatar" id="vavatar" src="" alt="">
     <img class="v-photo"  id="vphoto"  src="" alt="">
     <div class="v-name"    id="vname"></div>
     <div class="v-comment" id="vcomment"></div>

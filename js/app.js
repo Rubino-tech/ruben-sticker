@@ -1,12 +1,5 @@
-// ── Service worker registration ──
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
-  });
-}
-
 // ── Ruben default photo ──
-const RUBEN = 'data:image/jpeg;base64,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';
+const RUBEN = 'image/rub.jpg';
 
 // ── localStorage helpers ──
 const $ = id => document.getElementById(id);
@@ -15,8 +8,28 @@ const ls = {
   set: (k, v) => { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } }
 };
 const LS_PINS = 'rsm-pins-v4';
+const LS_PENDING_UPLOADS = 'rsm-pending-uploads-v1';
 const loadPins = () => { try { return JSON.parse(ls.get(LS_PINS) || '[]'); } catch (e) { return []; } };
 const savePins = p => ls.set(LS_PINS, JSON.stringify(p.map(({ id, lat, lng, name, comment, date, photoUrl }) => ({ id, lat, lng, name: name || '', comment: comment || '', date, photoUrl: photoUrl || null }))));
+const loadPendingUploads = () => {
+  try {
+    const raw = JSON.parse(ls.get(LS_PENDING_UPLOADS) || '[]');
+    return new Set(Array.isArray(raw) ? raw : []);
+  } catch (e) {
+    return new Set();
+  }
+};
+const savePendingUploads = s => ls.set(LS_PENDING_UPLOADS, JSON.stringify([...s]));
+const markPendingUpload = id => {
+  const pending = loadPendingUploads();
+  pending.add(id);
+  savePendingUploads(pending);
+};
+const clearPendingUpload = id => {
+  const pending = loadPendingUploads();
+  pending.delete(id);
+  savePendingUploads(pending);
+};
 const loadPhoto = id => ls.get('rsm-p-' + id);
 const savePhoto = (id, d) => ls.set('rsm-p-' + id, d);
 
@@ -81,9 +94,19 @@ function startApp() {
   $('btn-avatar').src = RUBEN;
 
   // ── Map ──
-  const map = L.map('map', { zoomControl: false, tap: true, tapTolerance: 15 }).setView([52.3, 5.3], 8);
+  const worldBounds = [[-85, -180], [85, 180]];
+  const map = L.map('map', {
+    zoomControl: false,
+    tap: true,
+    tapTolerance: 15,
+    minZoom: 2,
+    maxBounds: worldBounds,
+    maxBoundsViscosity: 1
+  }).setView([52.3, 5.3], 8);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>', maxZoom: 19
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom: 19,
+    noWrap: true
   }).addTo(map);
   L.control.zoom({ position: 'topright' }).addTo(map);
 
@@ -125,6 +148,7 @@ function startApp() {
         name: pin.name || '', comment: pin.comment || '',
         date: pin.date
       });
+      clearPendingUpload(pin.id);
     } catch (e) { console.warn('Cloud save failed:', e.message); }
   };
 
@@ -133,7 +157,8 @@ function startApp() {
   const closeSheet = (bd, sh) => { bd.classList.remove('on'); sh.classList.remove('on'); };
 
   const ab = $('ab'), as = $('asheet'), vb = $('vb'), vs = $('vsheet');
-  ab.addEventListener('click', closeAdd); $('ax').addEventListener('click', closeAdd);
+  const ax = $('ax');
+  ab.addEventListener('click', closeAdd); if (ax) ax.addEventListener('click', closeAdd);
   vb.addEventListener('click', closeView); $('vx').addEventListener('click', closeView); $('vclose').addEventListener('click', closeView);
 
   function closeAdd() { closeSheet(ab, as); resetForm(); }
@@ -142,7 +167,8 @@ function startApp() {
   // ── Add sheet ──
   $('add-pin-btn').addEventListener('click', () => {
     const c = map.getCenter();
-    $('acoords').textContent = `📍 ${c.lat.toFixed(5)}, ${c.lng.toFixed(5)}`;
+    const acoords = $('acoords');
+    if (acoords) acoords.textContent = `📍 ${c.lat.toFixed(5)}, ${c.lng.toFixed(5)}`;
     resetForm();
     $('name-inp').value = ls.get('rsm-last-name') || '';
     openSheet(ab, as);
@@ -187,8 +213,9 @@ function startApp() {
     const capturedPhoto = pendingPhoto;
     if (capturedPhoto) savePhoto(pin.id, capturedPhoto);
     pins.push(pin);
-    if (!savePins(pins)) { pins.pop(); btn.textContent = '📌 PIN IT!'; btn.disabled = false; alert('Opslag vol!'); return; }
-    renderPins(); btn.textContent = '📌 PIN IT!'; btn.disabled = false;
+    markPendingUpload(pin.id);
+    if (!savePins(pins)) { pins.pop(); btn.textContent = '📌 PIN'; btn.disabled = false; alert('Opslag vol!'); return; }
+    renderPins(); btn.textContent = '📌 PIN'; btn.disabled = false;
     closeAdd();
     saveToCloud(pin);
   });
@@ -198,7 +225,6 @@ function startApp() {
     const photo = loadPhoto(pin.id) || pin.photoUrl || null;
     const d = new Date(pin.date);
     $('vmeta').textContent = '📅 ' + d.toLocaleDateString('nl-NL', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }) + ' · ' + d.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
-    $('vavatar').src = photo || RUBEN;
     const vp = $('vphoto');
     if (photo) { vp.src = photo; vp.classList.add('on'); } else { vp.src = ''; vp.classList.remove('on'); }
     const vn = $('vname');
@@ -225,10 +251,16 @@ function startApp() {
     db.collection('pins').onSnapshot(snap => {
       const cp = []; snap.forEach(d => cp.push(d.data()));
       const cpIds = new Set(cp.map(c => c.id));
-      const lo = pins.filter(p => !cpIds.has(p.id));
-      pins = [...cp, ...lo]; savePins(pins); renderPins();
-      // Upload any local-only pins that haven't reached Firestore yet
-      lo.forEach(pin => saveToCloud(pin));
+      const pending = loadPendingUploads();
+      const unsyncedLocal = pins.filter(p => pending.has(p.id) && !cpIds.has(p.id));
+
+      // Cloud is source of truth; only keep local pins that are still pending upload.
+      pins = [...cp, ...unsyncedLocal];
+      savePins(pins);
+      renderPins();
+
+      // Retry only pending local pins. Deleted cloud pins won't be recreated.
+      unsyncedLocal.forEach(pin => saveToCloud(pin));
     }, err => console.warn('Firestore error:', err));
   });
 }
