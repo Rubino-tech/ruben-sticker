@@ -52,6 +52,11 @@ async function initCloud() {
   } catch (e) { console.warn('Cloud sync unavailable:', e.message); }
 }
 
+// ── Image validation limits ──
+const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB
+const MAX_NAME_LENGTH = 50;
+const MAX_COMMENT_LENGTH = 200;
+
 // ── Image compression ──
 const compress = (url, maxW = 900, q = .65) => new Promise(res => {
   const i = new Image(); i.onload = () => {
@@ -192,6 +197,7 @@ function startApp() {
 
   function resetForm() {
     $('name-inp').classList.remove('err'); $('name-err').classList.remove('on');
+    $('photo-err').classList.remove('on');
     $('comment-inp').value = ''; $('gal').value = ''; $('cam').value = '';
     pendingPhoto = null; setPreview(null);
   }
@@ -203,10 +209,25 @@ function startApp() {
 
   $('rmbtn').addEventListener('click', e => {
     e.stopPropagation(); pendingPhoto = null; setPreview(null); $('gal').value = ''; $('cam').value = '';
+    $('photo-err').classList.remove('on');
   });
 
   const handleFile = inp => {
     const f = inp.files[0]; if (!f) return;
+    const photoErr = $('photo-err');
+    if (!f.type.startsWith('image/')) {
+      photoErr.textContent = '⚠️ Alleen afbeeldingen toegestaan (jpg, png, gif, …)!';
+      photoErr.classList.add('on');
+      inp.value = '';
+      return;
+    }
+    if (f.size > MAX_FILE_BYTES) {
+      photoErr.textContent = '⚠️ Afbeelding is te groot (max 5 MB)!';
+      photoErr.classList.add('on');
+      inp.value = '';
+      return;
+    }
+    photoErr.classList.remove('on');
     const r = new FileReader();
     r.onload = async e => { const c = await compress(e.target.result); if (c) { pendingPhoto = c; setPreview(c); } };
     r.readAsDataURL(f);
@@ -218,13 +239,14 @@ function startApp() {
   });
 
   $('pinbtn').addEventListener('click', () => {
-    const ne = $('name-inp'), name = ne.value.trim();
+    const ne = $('name-inp'), name = ne.value.trim().slice(0, MAX_NAME_LENGTH);
     if (!name) { ne.classList.add('err'); $('name-err').classList.add('on'); ne.focus(); return; }
     const btn = $('pinbtn');
     btn.textContent = '⏳ Opslaan...'; btn.disabled = true;
     ls.set('rsm-last-name', name);
     const c = map.getCenter();
-    const pin = { id: Date.now().toString(36) + '-' + Math.random().toString(36).slice(2), lat: c.lat, lng: c.lng, name, comment: $('comment-inp').value.trim(), date: new Date().toISOString() };
+    const comment = $('comment-inp').value.trim().slice(0, MAX_COMMENT_LENGTH);
+    const pin = { id: Date.now().toString(36) + '-' + Math.random().toString(36).slice(2), lat: c.lat, lng: c.lng, name, comment, date: new Date().toISOString() };
     const capturedPhoto = pendingPhoto;
     if (capturedPhoto) savePhoto(pin.id, capturedPhoto);
     pins.push(pin);
