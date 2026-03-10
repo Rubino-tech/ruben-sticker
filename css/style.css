@@ -219,12 +219,14 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none;font-f
     top:50%;
     transform:translateY(-50%) scale(.96);
     opacity:0;
+    pointer-events:none;
     transition:transform .25s cubic-bezier(.32,0,.67,0),opacity .25s;
     max-height:90vh;
   }
   .sheet.on{
     transform:translateY(-50%) scale(1);
     opacity:1;
+    pointer-events:all;
     transition:transform .3s cubic-bezier(.34,1.2,.64,1),opacity .25s;
   }
   .v-photo{max-height:240px;object-fit:contain;background:#f0f0f0;}
