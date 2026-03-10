@@ -1,5 +1,6 @@
 // ── Ruben default photo ──
 const RUBEN = 'image/rub.jpg';
+const FIREBASE_VERSION = '10.11.1';
 
 // ── localStorage helpers ──
 const $ = id => document.getElementById(id);
@@ -9,15 +10,31 @@ const ls = {
 };
 const LS_PINS = 'rsm-pins-v4';
 const LS_PENDING_UPLOADS = 'rsm-pending-uploads-v1';
-const loadPins = () => { try { return JSON.parse(ls.get(LS_PINS) || '[]'); } catch (e) { return []; } };
-const savePins = p => ls.set(LS_PINS, JSON.stringify(p.map(({ id, lat, lng, name, comment, date, photoUrl }) => ({ id, lat, lng, name: name || '', comment: comment || '', date, photoUrl: photoUrl || null }))));
-const loadPendingUploads = () => {
+const readJson = (key, fallback) => {
   try {
-    const raw = JSON.parse(ls.get(LS_PENDING_UPLOADS) || '[]');
-    return new Set(Array.isArray(raw) ? raw : []);
+    const raw = ls.get(key);
+    return raw ? JSON.parse(raw) : fallback;
   } catch (e) {
-    return new Set();
+    return fallback;
   }
+};
+const serializePin = ({ id, lat, lng, name, comment, date, photoUrl }) => ({
+  id,
+  lat,
+  lng,
+  name: name || '',
+  comment: comment || '',
+  date,
+  photoUrl: photoUrl || null
+});
+const loadPins = () => {
+  const raw = readJson(LS_PINS, []);
+  return Array.isArray(raw) ? raw : [];
+};
+const savePins = pins => ls.set(LS_PINS, JSON.stringify(pins.map(serializePin)));
+const loadPendingUploads = () => {
+  const raw = readJson(LS_PENDING_UPLOADS, []);
+  return new Set(Array.isArray(raw) ? raw : []);
 };
 const savePendingUploads = s => ls.set(LS_PENDING_UPLOADS, JSON.stringify([...s]));
 const markPendingUpload = id => {
@@ -32,24 +49,50 @@ const clearPendingUpload = id => {
 };
 const loadPhoto = id => ls.get('rsm-p-' + id);
 const savePhoto = (id, d) => ls.set('rsm-p-' + id, d);
+const resolvePinPhoto = pin => pin.localPhotoData || loadPhoto(pin.id) || pin.photoUrl || null;
+const createPinId = () => Date.now().toString(36) + '-' + Math.random().toString(36).slice(2);
+const buildPinDocument = (pin, photoUrl = null) => ({
+  id: pin.id,
+  lat: pin.lat,
+  lng: pin.lng,
+  name: pin.name || '',
+  comment: pin.comment || '',
+  date: pin.date,
+  photoUrl: photoUrl || null
+});
+const formatPinDate = value => {
+  const d = new Date(value);
+  return d.toLocaleDateString('nl-NL', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })
+    + ' · '
+    + d.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
+};
+const readFileAsDataUrl = file => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = e => resolve(e.target.result);
+  reader.onerror = () => reject(new Error('file-read-failed'));
+  reader.readAsDataURL(file);
+});
+const logCloudError = (label, error) => console.warn(label, error.code || error.message || error);
 
 // ── Cloud sync ──
-let db = null, cloudEnabled = false;
+let db = null, storage = null, cloudEnabled = false;
 
 async function initCloud() {
   // firebaseConfig is defined in firebase-config.js (not committed to version control)
   if (typeof firebaseConfig === 'undefined' || !firebaseConfig.apiKey || !firebaseConfig.projectId) return;
   try {
-    const v = '10.11.1', base = `https://www.gstatic.com/firebasejs/${v}`;
+    const base = `https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}`;
     await loadScript(`${base}/firebase-app-compat.js`);
     await loadScript(`${base}/firebase-auth-compat.js`);
     await loadScript(`${base}/firebase-firestore-compat.js`);
-    firebase.initializeApp(firebaseConfig);
+    await loadScript(`${base}/firebase-storage-compat.js`);
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     await firebase.auth().signInAnonymously();
     db = firebase.firestore();
+    storage = firebase.storage();
     cloudEnabled = true;
     console.log('☁️ Cloud sync active');
-  } catch (e) { console.warn('Cloud sync unavailable:', e.message); }
+  } catch (e) { logCloudError('Cloud sync unavailable:', e); }
 }
 
 // ── Image validation limits ──
@@ -95,17 +138,49 @@ async function initMap() {
 }
 
 function startApp() {
+  const ui = {
+    addBackdrop: $('ab'),
+    addCoords: $('acoords'),
+    addPinButton: $('add-pin-btn'),
+    addSheet: $('asheet'),
+    buttonAvatar: $('btn-avatar'),
+    cameraInput: $('cam'),
+    closeAddButton: $('ax'),
+    closeListButton: $('lx'),
+    closeViewButton: $('vclose'),
+    commentInput: $('comment-inp'),
+    counterNum: $('counter-num'),
+    galleryInput: $('gal'),
+    listBackdrop: $('lb'),
+    listBody: $('lsheet-body'),
+    listSheet: $('lsheet'),
+    listTitle: $('lsheet-title'),
+    loading: $('loading'),
+    nameError: $('name-err'),
+    nameInput: $('name-inp'),
+    photoError: $('photo-err'),
+    pinButton: $('pinbtn'),
+    previewImage: $('previmg'),
+    previewWrap: $('prevwrap'),
+    removePhotoButton: $('rmbtn'),
+    viewBackdrop: $('vb'),
+    viewComment: $('vcomment'),
+    viewEmpty: $('vnone'),
+    viewMeta: $('vmeta'),
+    viewName: $('vname'),
+    viewPhoto: $('vphoto'),
+    viewSheet: $('vsheet')
+  };
   // ── Set button avatar ──
-  $('btn-avatar').src = RUBEN;
+  ui.buttonAvatar.src = RUBEN;
 
   // ── Map ──
-  const worldBounds = [[-85, -180], [85, 180]];
   const map = L.map('map', {
     zoomControl: false,
     tap: true,
     tapTolerance: 15,
     minZoom: 2,
-    maxBounds: worldBounds,
+    maxBounds: [[-85, -180], [85, 180]],
     maxBoundsViscosity: 1
   }).setView([52.3, 5.3], 8);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -148,141 +223,188 @@ function startApp() {
   const renderPins = () => {
     cg.clearLayers();
     pins.forEach(pin => {
-      const m = L.marker([pin.lat, pin.lng], { icon: makePin(loadPhoto(pin.id) || pin.photoUrl || null), pinData: pin });
+      const m = L.marker([pin.lat, pin.lng], { icon: makePin(resolvePinPhoto(pin)), pinData: pin });
       m.on('click', () => openView(pin));
       cg.addLayer(m);
     });
-    const countEl = $('counter-num');
-    if (countEl) countEl.textContent = pins.length;
+    if (ui.counterNum) ui.counterNum.textContent = pins.length;
   };
 
-  // ── Cloud: save a single pin to Firestore (photos stored locally only) ──
-  const saveToCloud = async (pin) => {
+  // ── Cloud: save a single pin to Firestore and Storage ──
+  const uploadPhoto = async (pinId, dataUrl) => {
+    if (!storage || !dataUrl) return null;
+    const ref = storage.ref().child(`pins/${pinId}.jpg`);
+    await ref.putString(dataUrl, 'data_url', { contentType: 'image/jpeg' });
+    return await ref.getDownloadURL();
+  };
+
+  const saveToCloud = async (pin, photoData = null) => {
     if (!cloudEnabled) return;
     try {
-      await db.collection('pins').doc(pin.id).set({
-        id: pin.id, lat: pin.lat, lng: pin.lng,
-        name: pin.name || '', comment: pin.comment || '',
-        date: pin.date
-      });
+      let photoUrl = pin.photoUrl || null;
+      const localPhoto = photoData || resolvePinPhoto(pin);
+      if (!photoUrl && localPhoto) {
+        photoUrl = await uploadPhoto(pin.id, localPhoto);
+        pin.photoUrl = photoUrl;
+        savePins(pins);
+      }
+      await db.collection('pins').doc(pin.id).set(buildPinDocument(pin, photoUrl));
       clearPendingUpload(pin.id);
-    } catch (e) { console.warn('Cloud save failed:', e.message); }
+      delete pin.localPhotoData;
+    } catch (e) { logCloudError('Cloud save failed:', e); }
   };
 
   // ── Sheet helpers ──
-  const openSheet = (bd, sh) => { bd.classList.add('on'); sh.classList.add('on'); };
-  const closeSheet = (bd, sh) => { bd.classList.remove('on'); sh.classList.remove('on'); };
+  const setSheetOpen = (backdrop, sheet, isOpen) => {
+    backdrop.classList.toggle('on', isOpen);
+    sheet.classList.toggle('on', isOpen);
+  };
+  const openSheet = (backdrop, sheet) => setSheetOpen(backdrop, sheet, true);
+  const closeSheet = (backdrop, sheet) => setSheetOpen(backdrop, sheet, false);
 
-  const ab = $('ab'), as = $('asheet'), vb = $('vb'), vs = $('vsheet');
-  const lb = $('lb'), lsh = $('lsheet');
-  const ax = $('ax');
-  ab.addEventListener('click', closeAdd); if (ax) ax.addEventListener('click', closeAdd);
-  vb.addEventListener('click', closeView); $('vclose').addEventListener('click', closeView);
-  lb.addEventListener('click', closeList); $('lx').addEventListener('click', closeList);
+  ui.addBackdrop.addEventListener('click', closeAdd);
+  if (ui.closeAddButton) ui.closeAddButton.addEventListener('click', closeAdd);
+  ui.viewBackdrop.addEventListener('click', closeView);
+  ui.closeViewButton.addEventListener('click', closeView);
+  ui.listBackdrop.addEventListener('click', closeList);
+  ui.closeListButton.addEventListener('click', closeList);
 
-  function closeAdd() { closeSheet(ab, as); resetForm(); }
-  function closeView() { closeSheet(vb, vs); }
-  function closeList() { closeSheet(lb, lsh); }
+  function closeAdd() { closeSheet(ui.addBackdrop, ui.addSheet); resetForm(); }
+  function closeView() { closeSheet(ui.viewBackdrop, ui.viewSheet); }
+  function closeList() { closeSheet(ui.listBackdrop, ui.listSheet); }
 
   // ── Add sheet ──
-  $('add-pin-btn').addEventListener('click', () => {
-    const c = map.getCenter();
-    const acoords = $('acoords');
-    if (acoords) acoords.textContent = `📍 ${c.lat.toFixed(5)}, ${c.lng.toFixed(5)}`;
+  ui.addPinButton.addEventListener('click', () => {
+    const center = map.getCenter();
+    const acoords = ui.addCoords;
+    if (acoords) acoords.textContent = `📍 ${center.lat.toFixed(5)}, ${center.lng.toFixed(5)}`;
     resetForm();
-    $('name-inp').value = ls.get('rsm-last-name') || '';
-    openSheet(ab, as);
-    setTimeout(() => { if (!$('name-inp').value) $('name-inp').focus(); }, 400);
+    ui.nameInput.value = ls.get('rsm-last-name') || '';
+    openSheet(ui.addBackdrop, ui.addSheet);
+    setTimeout(() => { if (!ui.nameInput.value) ui.nameInput.focus(); }, 400);
   });
 
   function resetForm() {
-    $('name-inp').classList.remove('err'); $('name-err').classList.remove('on');
-    $('photo-err').classList.remove('on');
-    $('comment-inp').value = ''; $('gal').value = ''; $('cam').value = '';
-    pendingPhoto = null; setPreview(null);
+    ui.nameInput.classList.remove('err');
+    ui.nameError.classList.remove('on');
+    ui.photoError.classList.remove('on');
+    ui.photoError.textContent = '';
+    ui.commentInput.value = '';
+    ui.galleryInput.value = '';
+    ui.cameraInput.value = '';
+    pendingPhoto = null;
+    setPreview(null);
   }
 
   function setPreview(url) {
-    const w = $('prevwrap'), i = $('previmg');
-    if (url) { i.src = url; w.classList.add('on'); } else { i.src = ''; w.classList.remove('on'); }
+    if (url) {
+      ui.previewImage.src = url;
+      ui.previewWrap.classList.add('on');
+    } else {
+      ui.previewImage.src = '';
+      ui.previewWrap.classList.remove('on');
+    }
   }
 
-  $('rmbtn').addEventListener('click', e => {
-    e.stopPropagation(); pendingPhoto = null; setPreview(null); $('gal').value = ''; $('cam').value = '';
-    $('photo-err').classList.remove('on');
+  ui.removePhotoButton.addEventListener('click', e => {
+    e.stopPropagation();
+    pendingPhoto = null;
+    setPreview(null);
+    ui.galleryInput.value = '';
+    ui.cameraInput.value = '';
+    ui.photoError.classList.remove('on');
+    ui.photoError.textContent = '';
   });
 
-  const handleFile = inp => {
-    const f = inp.files[0]; if (!f) return;
-    const photoErr = $('photo-err');
-    if (!f.type.startsWith('image/')) {
-      photoErr.textContent = '⚠️ Alleen afbeeldingen toegestaan (jpg, png, gif, …)!';
-      photoErr.classList.add('on');
-      inp.value = '';
+  const handleFile = async input => {
+    const file = input.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      ui.photoError.textContent = '⚠️ Alleen afbeeldingen toegestaan (jpg, png, gif, …)!';
+      ui.photoError.classList.add('on');
+      input.value = '';
       return;
     }
-    if (f.size > MAX_FILE_BYTES) {
-      photoErr.textContent = '⚠️ Afbeelding is te groot (max 5 MB)!';
-      photoErr.classList.add('on');
-      inp.value = '';
+    if (file.size > MAX_FILE_BYTES) {
+      ui.photoError.textContent = '⚠️ Afbeelding is te groot (max 5 MB)!';
+      ui.photoError.classList.add('on');
+      input.value = '';
       return;
     }
-    photoErr.classList.remove('on');
-    const r = new FileReader();
-    r.onload = async e => { const c = await compress(e.target.result); if (c) { pendingPhoto = c; setPreview(c); } };
-    r.readAsDataURL(f);
+    try {
+      ui.photoError.classList.remove('on');
+      ui.photoError.textContent = '';
+      const compressedPhoto = await compress(await readFileAsDataUrl(file));
+      if (!compressedPhoto) {
+        ui.photoError.textContent = '⚠️ Afbeelding kon niet worden verwerkt.';
+        ui.photoError.classList.add('on');
+        input.value = '';
+        return;
+      }
+      pendingPhoto = compressedPhoto;
+      setPreview(compressedPhoto);
+    } catch (e) {
+      ui.photoError.textContent = '⚠️ Afbeelding kon niet worden gelezen.';
+      ui.photoError.classList.add('on');
+      input.value = '';
+    }
   };
-  $('gal').addEventListener('change', function () { handleFile(this); });
-  $('cam').addEventListener('change', function () { handleFile(this); });
-  $('name-inp').addEventListener('input', function () {
-    if (this.value.trim()) { this.classList.remove('err'); $('name-err').classList.remove('on'); }
+  ui.galleryInput.addEventListener('change', function () { handleFile(this); });
+  ui.cameraInput.addEventListener('change', function () { handleFile(this); });
+  ui.nameInput.addEventListener('input', function () {
+    if (this.value.trim()) { this.classList.remove('err'); ui.nameError.classList.remove('on'); }
   });
 
-  $('pinbtn').addEventListener('click', () => {
-    const ne = $('name-inp'), name = ne.value.trim().slice(0, MAX_NAME_LENGTH);
-    if (!name) { ne.classList.add('err'); $('name-err').classList.add('on'); ne.focus(); return; }
-    const btn = $('pinbtn');
-    btn.textContent = '⏳ Opslaan...'; btn.disabled = true;
+  ui.pinButton.addEventListener('click', () => {
+    const name = ui.nameInput.value.trim().slice(0, MAX_NAME_LENGTH);
+    if (!name) {
+      ui.nameInput.classList.add('err');
+      ui.nameError.classList.add('on');
+      ui.nameInput.focus();
+      return;
+    }
+    ui.pinButton.textContent = '⏳ Opslaan...';
+    ui.pinButton.disabled = true;
     ls.set('rsm-last-name', name);
-    const c = map.getCenter();
-    const comment = $('comment-inp').value.trim().slice(0, MAX_COMMENT_LENGTH);
-    const pin = { id: Date.now().toString(36) + '-' + Math.random().toString(36).slice(2), lat: c.lat, lng: c.lng, name, comment, date: new Date().toISOString() };
+    const center = map.getCenter();
+    const comment = ui.commentInput.value.trim().slice(0, MAX_COMMENT_LENGTH);
     const capturedPhoto = pendingPhoto;
-    if (capturedPhoto) savePhoto(pin.id, capturedPhoto);
+    const pin = { id: createPinId(), lat: center.lat, lng: center.lng, name, comment, date: new Date().toISOString(), localPhotoData: capturedPhoto || null };
+    if (capturedPhoto && !savePhoto(pin.id, capturedPhoto)) console.warn('Local photo cache failed; continuing with in-memory upload only');
     pins.push(pin);
     markPendingUpload(pin.id);
-    if (!savePins(pins)) { pins.pop(); btn.textContent = '📌 PLAK'; btn.disabled = false; alert('Opslag vol!'); return; }
-    renderPins(); btn.textContent = '📌 PLAK'; btn.disabled = false;
+    if (!savePins(pins)) {
+      pins.pop();
+      ui.pinButton.textContent = '📌 PLAK';
+      ui.pinButton.disabled = false;
+      alert('Opslag vol!');
+      return;
+    }
+    renderPins();
+    ui.pinButton.textContent = '📌 PLAK';
+    ui.pinButton.disabled = false;
     closeAdd();
-    saveToCloud(pin);
+    void saveToCloud(pin, capturedPhoto);
   });
 
   // ── View sheet ──
   function openView(pin) {
-    const photo = loadPhoto(pin.id) || pin.photoUrl || null;
-    const d = new Date(pin.date);
-    $('vmeta').textContent = '📅 ' + d.toLocaleDateString('nl-NL', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }) + ' · ' + d.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
-    const vp = $('vphoto');
-    if (photo) { vp.src = photo; vp.classList.add('on'); } else { vp.src = ''; vp.classList.remove('on'); }
-    const vn = $('vname');
-    if (pin.name) { vn.textContent = pin.name; vn.classList.add('on'); } else { vn.classList.remove('on'); }
-    const vc = $('vcomment');
-    if (pin.comment) { vc.textContent = '"' + pin.comment + '"'; vc.classList.add('on'); } else { vc.classList.remove('on'); }
-    const vno = $('vnone');
-    if (!photo && !pin.comment) { vno.textContent = '🌟 Een Ruben Sticker is hier geplaatst!'; vno.style.display = 'block'; } else { vno.style.display = 'none'; }
-    openSheet(vb, vs);
+    const photo = resolvePinPhoto(pin);
+    ui.viewMeta.textContent = '📅 ' + formatPinDate(pin.date);
+    if (photo) { ui.viewPhoto.src = photo; ui.viewPhoto.classList.add('on'); } else { ui.viewPhoto.src = ''; ui.viewPhoto.classList.remove('on'); }
+    if (pin.name) { ui.viewName.textContent = pin.name; ui.viewName.classList.add('on'); } else { ui.viewName.classList.remove('on'); }
+    if (pin.comment) { ui.viewComment.textContent = '"' + pin.comment + '"'; ui.viewComment.classList.add('on'); } else { ui.viewComment.classList.remove('on'); }
+    if (!photo && !pin.comment) { ui.viewEmpty.textContent = '🌟 Een Ruben Sticker is hier geplaatst!'; ui.viewEmpty.style.display = 'block'; } else { ui.viewEmpty.style.display = 'none'; }
+    openSheet(ui.viewBackdrop, ui.viewSheet);
   }
 
   // ── List sheet (multiple stickers at same location) ──
   function openList(pinsArr) {
-    const titleEl = $('lsheet-title');
-    titleEl.textContent = pinsArr.length + ' stickers op deze plek';
-    const body = $('lsheet-body');
-    body.innerHTML = '';
+    ui.listTitle.textContent = pinsArr.length + ' stickers op deze plek';
+    ui.listBody.innerHTML = '';
     pinsArr.forEach(pin => {
-      const photo = loadPhoto(pin.id) || pin.photoUrl || RUBEN;
-      const d = new Date(pin.date);
-      const dateStr = d.toLocaleDateString('nl-NL', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }) + ' · ' + d.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
+      const photo = resolvePinPhoto(pin) || RUBEN;
+      const dateStr = formatPinDate(pin.date);
       const item = document.createElement('div');
       item.className = 'list-item';
       const avatar = document.createElement('img');
@@ -313,9 +435,9 @@ function startApp() {
       item.appendChild(info);
       item.appendChild(arrow);
       item.addEventListener('click', () => { closeList(); openView(pin); });
-      body.appendChild(item);
+      ui.listBody.appendChild(item);
     });
-    openSheet(lb, lsh);
+    openSheet(ui.listBackdrop, ui.listSheet);
   }
 
   // ── Init ──
@@ -324,8 +446,8 @@ function startApp() {
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(p => map.setView([p.coords.latitude, p.coords.longitude], 14), () => {}, { timeout: 6000, enableHighAccuracy: true });
   }
-  $('loading').style.opacity = '0';
-  setTimeout(() => $('loading').style.display = 'none', 400);
+  ui.loading.style.opacity = '0';
+  setTimeout(() => { ui.loading.style.display = 'none'; }, 400);
 
   // ── Cloud sync (background — pins appear as soon as Firebase is ready) ──
   initCloud().then(() => {
@@ -342,8 +464,8 @@ function startApp() {
       renderPins();
 
       // Retry only pending local pins. Deleted cloud pins won't be recreated.
-      unsyncedLocal.forEach(pin => saveToCloud(pin));
-    }, err => console.warn('Firestore error:', err));
+      unsyncedLocal.forEach(pin => { void saveToCloud(pin); });
+    }, err => logCloudError('Firestore error:', err));
   });
 }
 
