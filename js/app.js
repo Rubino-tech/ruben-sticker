@@ -137,6 +137,8 @@ function startApp() {
       m.on('click', () => openView(pin));
       cg.addLayer(m);
     });
+    const countEl = $('sticker-count');
+    if (countEl) countEl.textContent = pins.length;
   };
 
   // ── Cloud: save a single pin to Firestore (photos stored locally only) ──
