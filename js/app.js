@@ -119,7 +119,7 @@ function startApp() {
   const makeCluster = n => {
     const s = n < 10 ? 54 : n < 100 ? 62 : 72;
     return L.divIcon({
-      html: `<div style="width:${s}px;height:${s}px;border-radius:50%;border:4px solid #fff;box-shadow:0 0 0 2.5px #1a1a2e,3px 3px 8px rgba(0,0,0,.35);overflow:hidden;position:relative;display:flex;align-items:center;justify-content:center;background:#1a1a2e"><img src="${RUBEN}" style="width:100%;height:100%;object-fit:cover;opacity:.4;position:absolute;inset:0"><span style="position:relative;z-index:1;font-family:'Permanent Marker',cursive;color:#FFD600;font-size:${n < 100 ? 16 : 13}px;text-shadow:1px 1px 3px rgba(0,0,0,.9)">${n}</span></div>`,
+      html: `<div style="width:${s}px;height:${s}px;border-radius:50%;border:4px solid #fff;box-shadow:0 0 0 2.5px #1a1a2e,3px 3px 8px rgba(0,0,0,.35);overflow:hidden;position:relative;display:flex;align-items:center;justify-content:center;background:#1a1a2e"><img src="${RUBEN}" style="width:100%;height:100%;object-fit:cover;opacity:.4;position:absolute;inset:0"><span style="position:relative;z-index:1;font-family:'DM Sans',system-ui,sans-serif;color:#FFD600;font-size:${n < 100 ? 16 : 13}px;text-shadow:1px 1px 3px rgba(0,0,0,.9)">${n}</span></div>`,
       iconSize: [s, s], iconAnchor: [s / 2, s / 2], className: ''
     });
   };
