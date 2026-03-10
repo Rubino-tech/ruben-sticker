@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Lilita+One&family=Fredoka+One&family=DM+Sans:wght@400;500;600&display=swap');
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{
   --yellow:#FFD600;--dark:#1a1a2e;--red:#E53935;--blue:#1565C0;
@@ -44,7 +44,7 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none;font-f
   left:50%;transform:translateX(-50%);
   z-index:600;
   background:var(--yellow);color:var(--dark);
-  font-family:'DM Sans',system-ui,sans-serif;font-size:1.1rem;
+  font-family:'Lilita One',cursive;font-size:1.1rem;
   border:none;height:62px;padding:0 10px 0 28px;border-radius:99px;cursor:pointer;
   box-shadow:4px 4px 0 rgba(0,0,0,.2),0 0 0 3px var(--dark);
   touch-action:manipulation;
@@ -80,6 +80,7 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none;font-f
   border:2px solid var(--yellow);
   object-fit:cover;display:block;flex-shrink:0;
 }
+#counter-num{font-family:'Fredoka One',cursive;}
 
 /* ── Zoom ── */
 .leaflet-control-zoom{margin-top:calc(60px + var(--safe-t)) !important;margin-right:calc(12px + var(--safe-r)) !important;}
