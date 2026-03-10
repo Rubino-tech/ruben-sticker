@@ -125,15 +125,25 @@ function startApp() {
   };
 
   const cg = L.markerClusterGroup({
-    maxClusterRadius: 60, spiderfyOnMaxZoom: false, showCoverageOnHover: false, zoomToBoundsOnClick: true,
+    maxClusterRadius: 60, spiderfyOnMaxZoom: false, showCoverageOnHover: false, zoomToBoundsOnClick: false,
     iconCreateFunction: c => makeCluster(c.getChildCount())
   });
   map.addLayer(cg);
 
+  cg.on('clusterclick', e => {
+    const cluster = e.layer;
+    if (map.getZoom() >= map.getMaxZoom()) {
+      const clusterPins = cluster.getAllChildMarkers().map(m => m.options.pinData).filter(Boolean);
+      if (clusterPins.length > 0) openList(clusterPins);
+    } else {
+      cluster.zoomToBounds({ padding: [20, 20] });
+    }
+  });
+
   const renderPins = () => {
     cg.clearLayers();
     pins.forEach(pin => {
-      const m = L.marker([pin.lat, pin.lng], { icon: makePin(loadPhoto(pin.id) || pin.photoUrl || null) });
+      const m = L.marker([pin.lat, pin.lng], { icon: makePin(loadPhoto(pin.id) || pin.photoUrl || null), pinData: pin });
       m.on('click', () => openView(pin));
       cg.addLayer(m);
     });
@@ -159,12 +169,15 @@ function startApp() {
   const closeSheet = (bd, sh) => { bd.classList.remove('on'); sh.classList.remove('on'); };
 
   const ab = $('ab'), as = $('asheet'), vb = $('vb'), vs = $('vsheet');
+  const lb = $('lb'), lsh = $('lsheet');
   const ax = $('ax');
   ab.addEventListener('click', closeAdd); if (ax) ax.addEventListener('click', closeAdd);
-  vb.addEventListener('click', closeView); $('vx').addEventListener('click', closeView); $('vclose').addEventListener('click', closeView);
+  vb.addEventListener('click', closeView); $('vclose').addEventListener('click', closeView);
+  lb.addEventListener('click', closeList); $('lx').addEventListener('click', closeList);
 
   function closeAdd() { closeSheet(ab, as); resetForm(); }
   function closeView() { closeSheet(vb, vs); }
+  function closeList() { closeSheet(lb, lsh); }
 
   // ── Add sheet ──
   $('add-pin-btn').addEventListener('click', () => {
@@ -230,12 +243,57 @@ function startApp() {
     const vp = $('vphoto');
     if (photo) { vp.src = photo; vp.classList.add('on'); } else { vp.src = ''; vp.classList.remove('on'); }
     const vn = $('vname');
-    if (pin.name) { vn.textContent = '👤 ' + pin.name; vn.classList.add('on'); } else { vn.classList.remove('on'); }
+    if (pin.name) { vn.textContent = pin.name; vn.classList.add('on'); } else { vn.classList.remove('on'); }
     const vc = $('vcomment');
     if (pin.comment) { vc.textContent = '"' + pin.comment + '"'; vc.classList.add('on'); } else { vc.classList.remove('on'); }
     const vno = $('vnone');
     if (!photo && !pin.comment) { vno.textContent = '🌟 Een Ruben Sticker is hier geplaatst!'; vno.style.display = 'block'; } else { vno.style.display = 'none'; }
     openSheet(vb, vs);
+  }
+
+  // ── List sheet (multiple stickers at same location) ──
+  function openList(pinsArr) {
+    const titleEl = $('lsheet-title');
+    titleEl.textContent = pinsArr.length + ' stickers op deze plek';
+    const body = $('lsheet-body');
+    body.innerHTML = '';
+    pinsArr.forEach(pin => {
+      const photo = loadPhoto(pin.id) || pin.photoUrl || RUBEN;
+      const d = new Date(pin.date);
+      const dateStr = d.toLocaleDateString('nl-NL', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }) + ' · ' + d.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
+      const item = document.createElement('div');
+      item.className = 'list-item';
+      const avatar = document.createElement('img');
+      avatar.className = 'list-item-avatar';
+      avatar.src = photo;
+      avatar.alt = '';
+      avatar.onerror = () => { avatar.src = RUBEN; };
+      const info = document.createElement('div');
+      info.className = 'list-item-info';
+      const nameEl = document.createElement('div');
+      nameEl.className = 'list-item-name';
+      nameEl.textContent = pin.name || 'Onbekend';
+      const dateEl = document.createElement('div');
+      dateEl.className = 'list-item-date';
+      dateEl.textContent = '📅 ' + dateStr;
+      info.appendChild(nameEl);
+      info.appendChild(dateEl);
+      if (pin.comment) {
+        const commentEl = document.createElement('div');
+        commentEl.className = 'list-item-comment';
+        commentEl.textContent = '"' + pin.comment + '"';
+        info.appendChild(commentEl);
+      }
+      const arrow = document.createElement('span');
+      arrow.className = 'list-item-arrow';
+      arrow.textContent = '›';
+      item.appendChild(avatar);
+      item.appendChild(info);
+      item.appendChild(arrow);
+      item.addEventListener('click', () => { closeList(); openView(pin); });
+      body.appendChild(item);
+    });
+    openSheet(lb, lsh);
   }
 
   // ── Init ──

@@ -74,17 +74,25 @@
 <div class="sbackdrop" id="vb"></div>
 <div class="sheet" id="vsheet">
   <div class="sheet-handle"></div>
-  <div class="sheet-head">
-    <div><h2>📌 Ruben Sticker</h2><div class="v-meta" id="vmeta" style="margin:4px 0 0;font-size:.75rem;color:#bbb"></div></div>
-    <button class="sheet-x" id="vx">✕</button>
-  </div>
+  <img class="v-photo" id="vphoto" src="" alt="">
   <div class="sheet-body">
-    <img class="v-photo"  id="vphoto"  src="" alt="">
-    <div class="v-name"    id="vname"></div>
+    <div class="v-name" id="vname"></div>
+    <div class="v-meta" id="vmeta"></div>
     <div class="v-comment" id="vcomment"></div>
-    <div class="v-none"    id="vnone" style="display:none"></div>
+    <div class="v-none" id="vnone" style="display:none"></div>
   </div>
   <div class="sheet-foot"><button class="btn-close" id="vclose">Sluiten</button></div>
+</div>
+
+<!-- LIST SHEET (multiple stickers at same location) -->
+<div class="sbackdrop" id="lb"></div>
+<div class="sheet" id="lsheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-head">
+    <div><h2 id="lsheet-title">Stickers op deze plek</h2></div>
+    <button class="sheet-x" id="lx">✕</button>
+  </div>
+  <div class="sheet-body" id="lsheet-body"></div>
 </div>
 
 <!--
