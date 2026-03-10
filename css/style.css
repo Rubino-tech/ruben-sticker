@@ -205,4 +205,27 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none;font-f
 .list-item-info{flex:1;min-width:0;}
 .list-item-name{font-weight:600;color:var(--dark);font-size:.95rem;}
 .list-item-date{color:#999;font-size:.75rem;margin-top:2px;}
+.list-item-comment{color:#777;font-size:.8rem;font-style:italic;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .list-item-arrow{color:#ccc;font-size:1.2rem;flex-shrink:0;}
+
+/* ── Desktop: center sheet as a card, prevent photo from spanning full viewport ── */
+@media (min-width: 640px) {
+  .sheet{
+    left:50%;right:auto;
+    width:480px;
+    margin-left:-240px;
+    border-radius:22px;
+    bottom:auto;
+    top:50%;
+    transform:translateY(-50%) scale(.96);
+    opacity:0;
+    transition:transform .25s cubic-bezier(.32,0,.67,0),opacity .25s;
+    max-height:90vh;
+  }
+  .sheet.on{
+    transform:translateY(-50%) scale(1);
+    opacity:1;
+    transition:transform .3s cubic-bezier(.34,1.2,.64,1),opacity .25s;
+  }
+  .v-photo{max-height:240px;object-fit:contain;background:#f0f0f0;}
+}

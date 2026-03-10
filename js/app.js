@@ -278,6 +278,12 @@ function startApp() {
       dateEl.textContent = '📅 ' + dateStr;
       info.appendChild(nameEl);
       info.appendChild(dateEl);
+      if (pin.comment) {
+        const commentEl = document.createElement('div');
+        commentEl.className = 'list-item-comment';
+        commentEl.textContent = '"' + pin.comment + '"';
+        info.appendChild(commentEl);
+      }
       const arrow = document.createElement('span');
       arrow.className = 'list-item-arrow';
       arrow.textContent = '›';
