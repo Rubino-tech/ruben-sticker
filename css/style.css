@@ -161,9 +161,9 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none;font-f
 .pbtn .pi{font-size:1.6rem;}
 .pbtn:active{background:#e8e8e8;}
 .pbtn input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;font-size:0;}
-.prev-wrap{display:none;position:relative;border-radius:12px;overflow:hidden;border:2px solid var(--dark);}
+.prev-wrap{display:none;position:relative;border-radius:12px;overflow:hidden;border:2px solid var(--dark);background:#f3f4f7;}
 .prev-wrap.on{display:block;}
-.prev-wrap img{width:100%;max-height:200px;object-fit:cover;display:block;}
+.prev-wrap img{width:100%;height:min(32dvh,240px);object-fit:contain;object-position:center;display:block;background:#f3f4f7;}
 .rm-photo{position:absolute;top:8px;right:8px;background:rgba(0,0,0,.65);color:#fff;border:none;border-radius:50%;width:32px;height:32px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;touch-action:manipulation;}
 
 /* ── Sheet footer ── */
@@ -188,7 +188,7 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none;font-f
 .btn-close:active{opacity:.85;}
 
 /* ── View sheet specifics ── */
-.v-photo{width:100%;max-height:200px;object-fit:cover;display:none;}
+.v-photo{width:100%;height:min(42dvh,320px);object-fit:contain;object-position:center;display:none;background:#f3f4f7;}
 .v-photo.on{display:block;}
 .v-name{font-family:'DM Sans',system-ui,sans-serif;font-size:1.1rem;font-weight:700;color:var(--dark);margin-bottom:2px;display:none;}
 .v-name.on{display:block;}
@@ -229,5 +229,5 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none;font-f
     pointer-events:all;
     transition:transform .3s cubic-bezier(.34,1.2,.64,1),opacity .25s;
   }
-  .v-photo{max-height:240px;object-fit:contain;background:#f0f0f0;}
+  .v-photo{height:min(46vh,420px);}
 }
