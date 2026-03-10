@@ -34,7 +34,7 @@ const loadPhoto = id => ls.get('rsm-p-' + id);
 const savePhoto = (id, d) => ls.set('rsm-p-' + id, d);
 
 // ── Cloud sync ──
-let db = null, cloudEnabled = false;
+let db = null, storage = null, cloudEnabled = false;
 
 async function initCloud() {
   // firebaseConfig is defined in firebase-config.js (not committed to version control)
@@ -44,9 +44,11 @@ async function initCloud() {
     await loadScript(`${base}/firebase-app-compat.js`);
     await loadScript(`${base}/firebase-auth-compat.js`);
     await loadScript(`${base}/firebase-firestore-compat.js`);
+    await loadScript(`${base}/firebase-storage-compat.js`);
     firebase.initializeApp(firebaseConfig);
     await firebase.auth().signInAnonymously();
     db = firebase.firestore();
+    storage = firebase.storage();
     cloudEnabled = true;
     console.log('☁️ Cloud sync active');
   } catch (e) { console.warn('Cloud sync unavailable:', e.message); }
@@ -156,17 +158,28 @@ function startApp() {
     if (countEl) countEl.textContent = pins.length;
   };
 
-  // ── Cloud: save a single pin to Firestore (photos stored locally only) ──
+  // ── Cloud: save a single pin to Firestore (photo URL from Storage or null) ──
   const saveToCloud = async (pin) => {
     if (!cloudEnabled) return;
     try {
       await db.collection('pins').doc(pin.id).set({
         id: pin.id, lat: pin.lat, lng: pin.lng,
         name: pin.name || '', comment: pin.comment || '',
-        date: pin.date
+        date: pin.date,
+        photoUrl: pin.photoUrl || null
       });
       clearPendingUpload(pin.id);
     } catch (e) { console.warn('Cloud save failed:', e.message); }
+  };
+
+  // ── Upload compressed image data-URL to Firebase Storage ──
+  const uploadPhoto = async (pinId, dataUrl) => {
+    if (!cloudEnabled || !storage || !dataUrl) return null;
+    try {
+      const ref = storage.ref('photos/' + pinId + '.jpg');
+      await ref.putString(dataUrl, 'data_url');
+      return await ref.getDownloadURL();
+    } catch (e) { console.warn('Photo upload failed:', e.message); return null; }
   };
 
   // ── Sheet helpers ──
@@ -238,7 +251,7 @@ function startApp() {
     if (this.value.trim()) { this.classList.remove('err'); $('name-err').classList.remove('on'); }
   });
 
-  $('pinbtn').addEventListener('click', () => {
+  $('pinbtn').addEventListener('click', async () => {
     const ne = $('name-inp'), name = ne.value.trim().slice(0, MAX_NAME_LENGTH);
     if (!name) { ne.classList.add('err'); $('name-err').classList.add('on'); ne.focus(); return; }
     const btn = $('pinbtn');
@@ -254,6 +267,10 @@ function startApp() {
     if (!savePins(pins)) { pins.pop(); btn.textContent = '📌 PLAK'; btn.disabled = false; alert('Opslag vol!'); return; }
     renderPins(); btn.textContent = '📌 PLAK'; btn.disabled = false;
     closeAdd();
+    if (capturedPhoto && cloudEnabled) {
+      const url = await uploadPhoto(pin.id, capturedPhoto);
+      if (url) { pin.photoUrl = url; savePins(pins); }
+    }
     saveToCloud(pin);
   });
 
@@ -342,7 +359,18 @@ function startApp() {
       renderPins();
 
       // Retry only pending local pins. Deleted cloud pins won't be recreated.
-      unsyncedLocal.forEach(pin => saveToCloud(pin));
+      (async () => {
+        for (const pin of unsyncedLocal) {
+          if (!pin.photoUrl) {
+            const localPhoto = loadPhoto(pin.id);
+            if (localPhoto) {
+              const url = await uploadPhoto(pin.id, localPhoto);
+              if (url) { pin.photoUrl = url; savePins(pins); }
+            }
+          }
+          await saveToCloud(pin);
+        }
+      })();
     }, err => console.warn('Firestore error:', err));
   });
 }
