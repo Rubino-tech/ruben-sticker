@@ -48,7 +48,7 @@
   <div class="sheet-body">
     <div class="field">
       <label>👤 Jouw naam <span class="req">*</span></label>
-      <input type="text" id="name-inp" placeholder="Vul je naam in..." autocomplete="name" autocorrect="off" autocapitalize="words" spellcheck="false">
+      <input type="text" id="name-inp" placeholder="Vul je naam in..." autocomplete="name" autocorrect="off" autocapitalize="words" spellcheck="false" maxlength="50">
       <div class="errmsg" id="name-err">⚠️ Naam is verplicht!</div>
     </div>
     <div class="field">
@@ -61,10 +61,11 @@
         <img id="previmg" src="" alt="">
         <button class="rm-photo" id="rmbtn" type="button">✕</button>
       </div>
+      <div class="errmsg" id="photo-err"></div>
     </div>
     <div class="field">
       <label>💬 Opmerking (optioneel)</label>
-      <textarea id="comment-inp" placeholder="Schrijf iets..." rows="3"></textarea>
+      <textarea id="comment-inp" placeholder="Schrijf iets..." rows="3" maxlength="200"></textarea>
     </div>
   </div>
   <div class="sheet-foot"><button class="btn-pin" id="pinbtn">📌 PLAK</button></div>
