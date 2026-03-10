@@ -44,13 +44,17 @@ async function initCloud() {
     await loadScript(`${base}/firebase-app-compat.js`);
     await loadScript(`${base}/firebase-auth-compat.js`);
     await loadScript(`${base}/firebase-firestore-compat.js`);
-    await loadScript(`${base}/firebase-storage-compat.js`);
     firebase.initializeApp(firebaseConfig);
     await firebase.auth().signInAnonymously();
     db = firebase.firestore();
-    storage = firebase.storage();
     cloudEnabled = true;
     console.log('☁️ Cloud sync active');
+    // Load Storage SDK separately so a failure here never breaks Firestore sync
+    try {
+      await loadScript(`${base}/firebase-storage-compat.js`);
+      storage = firebase.storage();
+      console.log('📷 Photo upload active');
+    } catch (se) { console.warn('Photo upload unavailable:', se.message); }
   } catch (e) { console.warn('Cloud sync unavailable:', e.message); }
 }
 
@@ -158,16 +162,17 @@ function startApp() {
     if (countEl) countEl.textContent = pins.length;
   };
 
-  // ── Cloud: save a single pin to Firestore (photo URL from Storage or null) ──
+  // ── Cloud: save a single pin to Firestore (photo URL from Storage when available) ──
   const saveToCloud = async (pin) => {
     if (!cloudEnabled) return;
     try {
-      await db.collection('pins').doc(pin.id).set({
+      const doc = {
         id: pin.id, lat: pin.lat, lng: pin.lng,
         name: pin.name || '', comment: pin.comment || '',
-        date: pin.date,
-        photoUrl: pin.photoUrl || null
-      });
+        date: pin.date
+      };
+      if (pin.photoUrl) doc.photoUrl = pin.photoUrl;
+      await db.collection('pins').doc(pin.id).set(doc);
       clearPendingUpload(pin.id);
     } catch (e) { console.warn('Cloud save failed:', e.message); }
   };
