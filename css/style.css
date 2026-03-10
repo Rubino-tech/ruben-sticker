@@ -43,44 +43,55 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none;font-f
   bottom:calc(24px + var(--safe-b));
   left:50%;transform:translateX(-50%);
   z-index:600;
-  background:var(--yellow);color:var(--dark);
-  font-family:'Lilita One',cursive;font-size:1.1rem;
-  border:none;height:62px;padding:0 10px 0 28px;border-radius:99px;cursor:pointer;
-  box-shadow:4px 4px 0 rgba(0,0,0,.2),0 0 0 3px var(--dark);
+  background:#fff;color:#1a1a2e;
+  font-family:'Lilita One',cursive;font-size:1.05rem;
+  border:3px solid #1a1a2e;height:62px;padding:0 10px 0 28px;border-radius:99px;cursor:pointer;
+  box-shadow:4px 4px 0 rgba(0,0,0,.15);
   touch-action:manipulation;
   display:flex;align-items:center;gap:10px;white-space:nowrap;
   -webkit-user-select:none;user-select:none;
   transition:transform .12s,box-shadow .12s;
 }
-#add-pin-btn:active{transform:translateX(-50%) scale(.95);box-shadow:2px 2px 0 rgba(0,0,0,.2),0 0 0 3px var(--dark);}
+#add-pin-btn:active{transform:translateX(-50%) scale(.95);box-shadow:2px 2px 0 rgba(0,0,0,.1);}
 #btn-avatar{
   width:44px;height:44px;border-radius:50%;
-  border:3px solid var(--dark);
+  border:3px solid #1a1a2e;
   object-fit:cover;display:block;flex-shrink:0;
 }
 
 /* ── Sticker counter ── */
-#sticker-counter{
-  position:fixed;
-  top:calc(12px + var(--safe-t));
-  right:calc(12px + var(--safe-r));
-  z-index:600;
-  background:var(--dark);
-  color:var(--yellow);
-  font-family:'DM Sans',system-ui,sans-serif;
-  font-size:1.1rem;
-  border-radius:99px;
-  padding:5px 8px 5px 14px;
-  display:flex;align-items:center;gap:8px;
-  box-shadow:3px 3px 0 rgba(0,0,0,.2),0 0 0 2.5px var(--yellow);
-  pointer-events:none;
+#counter {
+  position: fixed;
+  top: calc(14px + var(--safe-t));
+  left: calc(14px + var(--safe-l));
+  z-index: 700;
+  background: #fff;
+  border: 2.5px solid #1a1a2e;
+  border-radius: 99px;
+  padding: 5px 8px 5px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 3px 3px 0 rgba(0,0,0,.12);
+  pointer-events: none;
 }
-#sticker-counter img{
-  width:34px;height:34px;border-radius:50%;
-  border:2px solid var(--yellow);
-  object-fit:cover;display:block;flex-shrink:0;
+#counter-num {
+  font-family: 'Fredoka One', cursive;
+  color: #1a1a2e;
+  font-size: 1.05rem;
+  line-height: 1;
+  min-width: 14px;
+  text-align: right;
 }
-#counter-num{font-family:'Fredoka One',cursive;}
+#counter-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2.5px solid #1a1a2e;
+  object-fit: cover;
+  display: block;
+  flex-shrink: 0;
+}
 
 /* ── Zoom ── */
 .leaflet-control-zoom{margin-top:calc(60px + var(--safe-t)) !important;margin-right:calc(12px + var(--safe-r)) !important;}
@@ -157,18 +168,18 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none;font-f
 
 /* ── Sheet footer ── */
 .sheet-foot{padding:12px 18px calc(12px + var(--safe-b));border-top:1px solid #f0f0f0;flex-shrink:0;background:#fff;}
-.btn-pin{
-  width:100%;height:58px;
-  background:var(--dark);color:var(--yellow);
-  font-family:'DM Sans',system-ui,sans-serif;font-size:1.2rem;
-  border:none;border-radius:14px;cursor:pointer;
-  box-shadow:4px 4px 0 var(--yellow);
-  touch-action:manipulation;
-  display:flex;align-items:center;justify-content:center;gap:8px;
-  transition:transform .1s,box-shadow .1s;
+.btn-pin {
+  width: 100%; height: 58px;
+  background: #1a1a2e; color: #fff;
+  font-family: 'Lilita One', cursive; font-size: 1.2rem;
+  border: none; border-radius: 14px; cursor: pointer;
+  box-shadow: 4px 4px 0 rgba(0,0,0,.2);
+  touch-action: manipulation;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: transform .1s, box-shadow .1s;
 }
-.btn-pin:active{transform:scale(.97);box-shadow:2px 2px 0 var(--yellow);}
-.btn-pin:disabled{opacity:.5;}
+.btn-pin:active { transform: scale(.97); box-shadow: 2px 2px 0 rgba(0,0,0,.15); }
+.btn-pin:disabled { opacity: .5; }
 .btn-close{
   width:100%;height:52px;background:#f2f2f2;color:var(--dark);
   font-family:'DM Sans',sans-serif;font-weight:600;font-size:1rem;

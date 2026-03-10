@@ -137,7 +137,7 @@ function startApp() {
       m.on('click', () => openView(pin));
       cg.addLayer(m);
     });
-    const countEl = $('sticker-count');
+    const countEl = $('counter-num');
     if (countEl) countEl.textContent = pins.length;
   };
 
@@ -216,8 +216,8 @@ function startApp() {
     if (capturedPhoto) savePhoto(pin.id, capturedPhoto);
     pins.push(pin);
     markPendingUpload(pin.id);
-    if (!savePins(pins)) { pins.pop(); btn.textContent = '📌 PIN'; btn.disabled = false; alert('Opslag vol!'); return; }
-    renderPins(); btn.textContent = '📌 PIN'; btn.disabled = false;
+    if (!savePins(pins)) { pins.pop(); btn.textContent = '📌 PLAK'; btn.disabled = false; alert('Opslag vol!'); return; }
+    renderPins(); btn.textContent = '📌 PLAK'; btn.disabled = false;
     closeAdd();
     saveToCloud(pin);
   });
