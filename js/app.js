@@ -100,6 +100,44 @@ const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB
 const MAX_NAME_LENGTH = 50;
 const MAX_COMMENT_LENGTH = 200;
 
+// ── Rate limiting ──
+const LS_RATE = 'rsm-rate-v1';
+const MAX_PINS_PER_HOUR = 10;
+const MAX_PHOTO_PINS_PER_HOUR = 5;
+const RATE_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+
+const loadRateData = () => {
+  const d = readJson(LS_RATE, {});
+  return {
+    timestamps: Array.isArray(d.timestamps) ? d.timestamps : [],
+    photoTimestamps: Array.isArray(d.photoTimestamps) ? d.photoTimestamps : []
+  };
+};
+const saveRateData = d => ls.set(LS_RATE, JSON.stringify(d));
+
+/** Returns {allowed, reason, data} – prunes expired entries as a side-effect. */
+const checkRateLimit = hasPhoto => {
+  const now = Date.now();
+  const cutoff = now - RATE_WINDOW_MS;
+  const data = loadRateData();
+  data.timestamps = data.timestamps.filter(t => t > cutoff);
+  data.photoTimestamps = data.photoTimestamps.filter(t => t > cutoff);
+  if (data.timestamps.length >= MAX_PINS_PER_HOUR) {
+    return { allowed: false, data, reason: `⚠️ Je kunt maximaal ${MAX_PINS_PER_HOUR} stickers per uur plaatsen. Probeer het later opnieuw!` };
+  }
+  if (hasPhoto && data.photoTimestamps.length >= MAX_PHOTO_PINS_PER_HOUR) {
+    return { allowed: false, data, reason: `⚠️ Je kunt maximaal ${MAX_PHOTO_PINS_PER_HOUR} stickers met foto per uur plaatsen. Probeer het zonder foto of wacht even!` };
+  }
+  return { allowed: true, data };
+};
+
+const recordPinRate = (hasPhoto, data) => {
+  const now = Date.now();
+  data.timestamps.push(now);
+  if (hasPhoto) data.photoTimestamps.push(now);
+  saveRateData(data);
+};
+
 // ── Image compression ──
 const compress = (url, maxW = 900, q = .65) => new Promise(res => {
   const i = new Image(); i.onload = () => {
@@ -363,12 +401,19 @@ function startApp() {
       ui.nameInput.focus();
       return;
     }
+    const capturedPhoto = pendingPhoto;
+    const hasPhoto = !!capturedPhoto;
+    const rl = checkRateLimit(hasPhoto);
+    if (!rl.allowed) {
+      ui.photoError.textContent = rl.reason;
+      ui.photoError.classList.add('on');
+      return;
+    }
     ui.pinButton.textContent = '⏳ Opslaan...';
     ui.pinButton.disabled = true;
     ls.set('rsm-last-name', name);
     const center = map.getCenter();
     const comment = ui.commentInput.value.trim().slice(0, MAX_COMMENT_LENGTH);
-    const capturedPhoto = pendingPhoto;
     const pin = { id: createPinId(), lat: center.lat, lng: center.lng, name, comment, date: new Date().toISOString(), localPhotoData: capturedPhoto || null };
     if (capturedPhoto && !savePhoto(pin.id, capturedPhoto)) console.warn('Local photo cache failed; continuing with in-memory upload only');
     pins.push(pin);
@@ -383,6 +428,7 @@ function startApp() {
     renderPins();
     ui.pinButton.textContent = '📌 PLAK';
     ui.pinButton.disabled = false;
+    recordPinRate(hasPhoto, rl.data);
     closeAdd();
     void saveToCloud(pin, capturedPhoto);
   });
