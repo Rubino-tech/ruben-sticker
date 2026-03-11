@@ -100,43 +100,28 @@ const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB
 const MAX_NAME_LENGTH = 50;
 const MAX_COMMENT_LENGTH = 200;
 
-// ── Rate limiting ──
+// ── Rate limiting (1 pin per 15 seconds) ──
 const LS_RATE = 'rsm-rate-v1';
-const MAX_PINS_PER_HOUR = 10;
-const MAX_PHOTO_PINS_PER_HOUR = 5;
-const RATE_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+const PIN_COOLDOWN_MS = 15 * 1000; // 15 seconds
 
-const loadRateData = () => {
+const loadLastPinTime = () => {
   const d = readJson(LS_RATE, {});
-  return {
-    timestamps: Array.isArray(d.timestamps) ? d.timestamps : [],
-    photoTimestamps: Array.isArray(d.photoTimestamps) ? d.photoTimestamps : []
-  };
+  return typeof d.lastPinTime === 'number' ? d.lastPinTime : 0;
 };
-const saveRateData = d => ls.set(LS_RATE, JSON.stringify(d));
+const saveLastPinTime = t => ls.set(LS_RATE, JSON.stringify({ lastPinTime: t }));
 
-/** Returns {allowed, reason, data} – prunes expired entries as a side-effect. */
-const checkRateLimit = hasPhoto => {
+/** Returns {allowed, reason} */
+const checkRateLimit = () => {
   const now = Date.now();
-  const cutoff = now - RATE_WINDOW_MS;
-  const data = loadRateData();
-  data.timestamps = data.timestamps.filter(t => t > cutoff);
-  data.photoTimestamps = data.photoTimestamps.filter(t => t > cutoff);
-  if (data.timestamps.length >= MAX_PINS_PER_HOUR) {
-    return { allowed: false, data, reason: `⚠️ Je kunt maximaal ${MAX_PINS_PER_HOUR} stickers per uur plaatsen. Probeer het later opnieuw!` };
+  const elapsed = now - loadLastPinTime();
+  if (elapsed < PIN_COOLDOWN_MS) {
+    const wait = Math.ceil((PIN_COOLDOWN_MS - elapsed) / 1000);
+    return { allowed: false, reason: `⏳ Wacht nog ${wait} seconde${wait !== 1 ? 'n' : ''} voor je een nieuwe sticker plaatst.` };
   }
-  if (hasPhoto && data.photoTimestamps.length >= MAX_PHOTO_PINS_PER_HOUR) {
-    return { allowed: false, data, reason: `⚠️ Je kunt maximaal ${MAX_PHOTO_PINS_PER_HOUR} stickers met foto per uur plaatsen. Probeer het zonder foto of wacht even!` };
-  }
-  return { allowed: true, data };
+  return { allowed: true };
 };
 
-const recordPinRate = (hasPhoto, data) => {
-  const now = Date.now();
-  data.timestamps.push(now);
-  if (hasPhoto) data.photoTimestamps.push(now);
-  saveRateData(data);
-};
+const recordPinRate = () => saveLastPinTime(Date.now());
 
 // ── Image compression ──
 const compress = (url, maxW = 900, q = .65) => new Promise(res => {
@@ -402,8 +387,7 @@ function startApp() {
       return;
     }
     const capturedPhoto = pendingPhoto;
-    const hasPhoto = !!capturedPhoto;
-    const rl = checkRateLimit(hasPhoto);
+    const rl = checkRateLimit();
     if (!rl.allowed) {
       ui.photoError.textContent = rl.reason;
       ui.photoError.classList.add('on');
@@ -428,7 +412,7 @@ function startApp() {
     renderPins();
     ui.pinButton.textContent = '📌 PLAK';
     ui.pinButton.disabled = false;
-    recordPinRate(hasPhoto, rl.data);
+    recordPinRate();
     closeAdd();
     void saveToCloud(pin, capturedPhoto);
   });
