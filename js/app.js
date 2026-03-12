@@ -100,6 +100,29 @@ const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB
 const MAX_NAME_LENGTH = 50;
 const MAX_COMMENT_LENGTH = 200;
 
+// ── Rate limiting (1 pin per 15 seconds) ──
+const LS_RATE = 'rsm-rate-v1';
+const PIN_COOLDOWN_MS = 15 * 1000; // 15 seconds
+
+const loadLastPinTime = () => {
+  const d = readJson(LS_RATE, {});
+  return typeof d.lastPinTime === 'number' ? d.lastPinTime : 0;
+};
+const saveLastPinTime = t => ls.set(LS_RATE, JSON.stringify({ lastPinTime: t }));
+
+/** Returns {allowed, reason} */
+const checkRateLimit = () => {
+  const now = Date.now();
+  const elapsed = now - loadLastPinTime();
+  if (elapsed < PIN_COOLDOWN_MS) {
+    const wait = Math.ceil((PIN_COOLDOWN_MS - elapsed) / 1000);
+    return { allowed: false, reason: `⏳ Wacht nog ${wait} seconde${wait !== 1 ? 'n' : ''} voor je een nieuwe sticker plaatst.` };
+  }
+  return { allowed: true };
+};
+
+const recordPinRate = () => saveLastPinTime(Date.now());
+
 // ── Image compression ──
 const compress = (url, maxW = 900, q = .65) => new Promise(res => {
   const i = new Image(); i.onload = () => {
@@ -363,12 +386,18 @@ function startApp() {
       ui.nameInput.focus();
       return;
     }
+    const capturedPhoto = pendingPhoto;
+    const rl = checkRateLimit();
+    if (!rl.allowed) {
+      ui.photoError.textContent = rl.reason;
+      ui.photoError.classList.add('on');
+      return;
+    }
     ui.pinButton.textContent = '⏳ Opslaan...';
     ui.pinButton.disabled = true;
     ls.set('rsm-last-name', name);
     const center = map.getCenter();
     const comment = ui.commentInput.value.trim().slice(0, MAX_COMMENT_LENGTH);
-    const capturedPhoto = pendingPhoto;
     const pin = { id: createPinId(), lat: center.lat, lng: center.lng, name, comment, date: new Date().toISOString(), localPhotoData: capturedPhoto || null };
     if (capturedPhoto && !savePhoto(pin.id, capturedPhoto)) console.warn('Local photo cache failed; continuing with in-memory upload only');
     pins.push(pin);
@@ -383,6 +412,7 @@ function startApp() {
     renderPins();
     ui.pinButton.textContent = '📌 PLAK';
     ui.pinButton.disabled = false;
+    recordPinRate();
     closeAdd();
     void saveToCloud(pin, capturedPhoto);
   });
