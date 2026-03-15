@@ -1,0 +1,29 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Write firebase config
+        run: |
+          echo "const firebaseConfig = {" > firebase-config.js
+          echo "  apiKey: \"${{ secrets.FB_API_KEY }}\"," >> firebase-config.js
+          echo "  authDomain: \"${{ secrets.FB_AUTH_DOMAIN }}\"," >> firebase-config.js
+          echo "  projectId: \"${{ secrets.FB_PROJECT_ID }}\"," >> firebase-config.js
+          echo "  storageBucket: \"${{ secrets.FB_STORAGE_BUCKET }}\"," >> firebase-config.js
+          echo "  messagingSenderId: \"${{ secrets.FB_MESSAGING_ID }}\"," >> firebase-config.js
+          echo "  appId: \"${{ secrets.FB_APP_ID }}\"" >> firebase-config.js
+          echo "};" >> firebase-config.js
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./
+          exclude_assets: ''
