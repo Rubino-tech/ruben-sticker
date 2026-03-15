@@ -11,8 +11,21 @@ const FIREBASE_VERSION = '10.11.1';
 
 // ── Legacy local cleanup ──
 const $ = id => document.getElementById(id);
-const LEGACY_STORAGE_KEYS = ['rsm-pins-v4', 'rsm-pending-uploads-v1', 'rsm-rate-v1', 'rsm-last-name'];
+const LS_SAVED_NAME = 'rsm-last-name';
+const LEGACY_STORAGE_KEYS = ['rsm-pins-v4', 'rsm-pending-uploads-v1', 'rsm-rate-v1'];
 const LEGACY_PHOTO_PREFIX = 'rsm-p-';
+const loadSavedName = () => {
+  try {
+    return localStorage.getItem(LS_SAVED_NAME) || '';
+  } catch {
+    return '';
+  }
+};
+const saveSavedName = name => {
+  try {
+    localStorage.setItem(LS_SAVED_NAME, name);
+  } catch {}
+};
 const clearLegacyLocalState = () => {
   try {
     const keysToRemove = [];
@@ -264,7 +277,7 @@ function startApp() {
     const acoords = ui.addCoords;
     if (acoords) acoords.textContent = `📍 ${center.lat.toFixed(5)}, ${center.lng.toFixed(5)}`;
     resetForm();
-    ui.nameInput.value = '';
+    ui.nameInput.value = loadSavedName();
     openSheet(ui.addBackdrop, ui.addSheet);
     setTimeout(() => { if (!ui.nameInput.value) ui.nameInput.focus(); }, 400);
   });
@@ -364,6 +377,7 @@ function startApp() {
     ui.photoError.textContent = '';
     ui.pinButton.textContent = '⏳ Opslaan...';
     ui.pinButton.disabled = true;
+    saveSavedName(name);
     const center = map.getCenter();
     const comment = ui.commentInput.value.trim().slice(0, MAX_COMMENT_LENGTH);
     const pin = { id: createPinId(), lat: center.lat, lng: center.lng, name, comment, date: new Date().toISOString() };
