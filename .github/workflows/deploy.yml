@@ -12,9 +12,9 @@ jobs:
 
       - name: Write firebase config
         run: |
-          cat > firebase-config.js << 'EOF'
+          cat > firebase-config.js << 'ENDOFFILE'
           ${{ secrets.FIREBASE_CONFIG }}
-          EOF
+          ENDOFFILE
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
