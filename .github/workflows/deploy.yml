@@ -12,9 +12,14 @@ jobs:
 
       - name: Write firebase config
         run: |
-          cat > firebase-config.js << 'ENDOFFILE'
-          ${{ secrets.FIREBASE_CONFIG }}
-          ENDOFFILE
+          echo "const firebaseConfig = {" > firebase-config.js
+          echo "  apiKey: \"${{ secrets.FB_API_KEY }}\"," >> firebase-config.js
+          echo "  authDomain: \"${{ secrets.FB_AUTH_DOMAIN }}\"," >> firebase-config.js
+          echo "  projectId: \"${{ secrets.FB_PROJECT_ID }}\"," >> firebase-config.js
+          echo "  storageBucket: \"${{ secrets.FB_STORAGE_BUCKET }}\"," >> firebase-config.js
+          echo "  messagingSenderId: \"${{ secrets.FB_MESSAGING_ID }}\"," >> firebase-config.js
+          echo "  appId: \"${{ secrets.FB_APP_ID }}\"" >> firebase-config.js
+          echo "};" >> firebase-config.js
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
