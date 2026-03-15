@@ -1,0 +1,3 @@
+# Firebase config contains your project credentials.
+# This file must be uploaded manually to your host — never committed to Git.
+firebase-config.js
