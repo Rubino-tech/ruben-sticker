@@ -26,6 +26,7 @@ const saveSavedName = name => {
     localStorage.setItem(LS_SAVED_NAME, name);
   } catch {}
 };
+let lastUsedName = loadSavedName();
 const clearLegacyLocalState = () => {
   try {
     const keysToRemove = [];
@@ -277,7 +278,7 @@ function startApp() {
     const acoords = ui.addCoords;
     if (acoords) acoords.textContent = `📍 ${center.lat.toFixed(5)}, ${center.lng.toFixed(5)}`;
     resetForm();
-    ui.nameInput.value = loadSavedName();
+    ui.nameInput.value = lastUsedName;
     openSheet(ui.addBackdrop, ui.addSheet);
     setTimeout(() => { if (!ui.nameInput.value) ui.nameInput.focus(); }, 400);
   });
@@ -350,6 +351,8 @@ function startApp() {
   ui.galleryInput.addEventListener('change', function () { handleFile(this); });
   ui.cameraInput.addEventListener('change', function () { handleFile(this); });
   ui.nameInput.addEventListener('input', function () {
+    lastUsedName = this.value.trim().slice(0, MAX_NAME_LENGTH);
+    saveSavedName(lastUsedName);
     if (this.value.trim()) { this.classList.remove('err'); ui.nameError.classList.remove('on'); }
   });
 
@@ -377,6 +380,7 @@ function startApp() {
     ui.photoError.textContent = '';
     ui.pinButton.textContent = '⏳ Opslaan...';
     ui.pinButton.disabled = true;
+    lastUsedName = name;
     saveSavedName(name);
     const center = map.getCenter();
     const comment = ui.commentInput.value.trim().slice(0, MAX_COMMENT_LENGTH);
