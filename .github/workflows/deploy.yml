@@ -11,7 +11,10 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Write firebase config
-        run: echo "${{ secrets.FIREBASE_CONFIG }}" > firebase-config.js
+        run: |
+          cat > firebase-config.js << 'EOF'
+          ${{ secrets.FIREBASE_CONFIG }}
+          EOF
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
