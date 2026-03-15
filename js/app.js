@@ -1,55 +1,30 @@
 // ── Ruben default photo ──
 const RUBEN = 'image/rub.jpg';
+const ALLOWED_STORAGE_HOST = 'https://firebasestorage.googleapis.com';
+const sanitizePhotoUrl = url => {
+  if (!url) return null;
+  if (url.startsWith('data:image/')) return url;
+  if (url.startsWith(ALLOWED_STORAGE_HOST)) return url;
+  return null;
+};
 const FIREBASE_VERSION = '10.11.1';
 
-// ── localStorage helpers ──
+// ── Legacy local cleanup ──
 const $ = id => document.getElementById(id);
-const ls = {
-  get: (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } },
-  set: (k, v) => { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } }
-};
-const LS_PINS = 'rsm-pins-v4';
-const LS_PENDING_UPLOADS = 'rsm-pending-uploads-v1';
-const readJson = (key, fallback) => {
+const LEGACY_STORAGE_KEYS = ['rsm-pins-v4', 'rsm-pending-uploads-v1', 'rsm-rate-v1', 'rsm-last-name'];
+const LEGACY_PHOTO_PREFIX = 'rsm-p-';
+const clearLegacyLocalState = () => {
   try {
-    const raw = ls.get(key);
-    return raw ? JSON.parse(raw) : fallback;
-  } catch (e) {
-    return fallback;
-  }
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!key) continue;
+      if (LEGACY_STORAGE_KEYS.includes(key) || key.startsWith(LEGACY_PHOTO_PREFIX)) keysToRemove.push(key);
+    }
+    keysToRemove.forEach(key => localStorage.removeItem(key));
+  } catch {}
 };
-const serializePin = ({ id, lat, lng, name, comment, date, photoUrl }) => ({
-  id,
-  lat,
-  lng,
-  name: name || '',
-  comment: comment || '',
-  date,
-  photoUrl: photoUrl || null
-});
-const loadPins = () => {
-  const raw = readJson(LS_PINS, []);
-  return Array.isArray(raw) ? raw : [];
-};
-const savePins = pins => ls.set(LS_PINS, JSON.stringify(pins.map(serializePin)));
-const loadPendingUploads = () => {
-  const raw = readJson(LS_PENDING_UPLOADS, []);
-  return new Set(Array.isArray(raw) ? raw : []);
-};
-const savePendingUploads = s => ls.set(LS_PENDING_UPLOADS, JSON.stringify([...s]));
-const markPendingUpload = id => {
-  const pending = loadPendingUploads();
-  pending.add(id);
-  savePendingUploads(pending);
-};
-const clearPendingUpload = id => {
-  const pending = loadPendingUploads();
-  pending.delete(id);
-  savePendingUploads(pending);
-};
-const loadPhoto = id => ls.get('rsm-p-' + id);
-const savePhoto = (id, d) => ls.set('rsm-p-' + id, d);
-const resolvePinPhoto = pin => pin.localPhotoData || loadPhoto(pin.id) || pin.photoUrl || null;
+const resolvePinPhoto = pin => pin.localPhotoData || pin.photoUrl || null;
 const createPinId = () => Date.now().toString(36) + '-' + Math.random().toString(36).slice(2);
 const buildPinDocument = (pin, photoUrl = null) => ({
   id: pin.id,
@@ -101,19 +76,13 @@ const MAX_NAME_LENGTH = 50;
 const MAX_COMMENT_LENGTH = 200;
 
 // ── Rate limiting (1 pin per 15 seconds) ──
-const LS_RATE = 'rsm-rate-v1';
 const PIN_COOLDOWN_MS = 15 * 1000; // 15 seconds
-
-const loadLastPinTime = () => {
-  const d = readJson(LS_RATE, {});
-  return typeof d.lastPinTime === 'number' ? d.lastPinTime : 0;
-};
-const saveLastPinTime = t => ls.set(LS_RATE, JSON.stringify({ lastPinTime: t }));
+let lastPinTime = 0;
 
 /** Returns {allowed, reason} */
 const checkRateLimit = () => {
   const now = Date.now();
-  const elapsed = now - loadLastPinTime();
+  const elapsed = now - lastPinTime;
   if (elapsed < PIN_COOLDOWN_MS) {
     const wait = Math.ceil((PIN_COOLDOWN_MS - elapsed) / 1000);
     return { allowed: false, reason: `⏳ Wacht nog ${wait} seconde${wait !== 1 ? 'n' : ''} voor je een nieuwe sticker plaatst.` };
@@ -121,7 +90,7 @@ const checkRateLimit = () => {
   return { allowed: true };
 };
 
-const recordPinRate = () => saveLastPinTime(Date.now());
+const recordPinRate = () => { lastPinTime = Date.now(); };
 
 // ── Image compression ──
 const compress = (url, maxW = 900, q = .65) => new Promise(res => {
@@ -246,7 +215,7 @@ function startApp() {
   const renderPins = () => {
     cg.clearLayers();
     pins.forEach(pin => {
-      const m = L.marker([pin.lat, pin.lng], { icon: makePin(resolvePinPhoto(pin)), pinData: pin });
+      const m = L.marker([pin.lat, pin.lng], { icon: makePin(sanitizePhotoUrl(resolvePinPhoto(pin))), pinData: pin });
       m.on('click', () => openView(pin));
       cg.addLayer(m);
     });
@@ -262,19 +231,12 @@ function startApp() {
   };
 
   const saveToCloud = async (pin, photoData = null) => {
-    if (!cloudEnabled) return;
-    try {
-      let photoUrl = pin.photoUrl || null;
-      const localPhoto = photoData || resolvePinPhoto(pin);
-      if (!photoUrl && localPhoto) {
-        photoUrl = await uploadPhoto(pin.id, localPhoto);
-        pin.photoUrl = photoUrl;
-        savePins(pins);
-      }
-      await db.collection('pins').doc(pin.id).set(buildPinDocument(pin, photoUrl));
-      clearPendingUpload(pin.id);
-      delete pin.localPhotoData;
-    } catch (e) { logCloudError('Cloud save failed:', e); }
+    if (!cloudEnabled || !db) throw new Error('cloud-unavailable');
+    let photoUrl = pin.photoUrl || null;
+    const localPhoto = photoData || resolvePinPhoto(pin);
+    if (!photoUrl && localPhoto) photoUrl = await uploadPhoto(pin.id, localPhoto);
+    await db.collection('pins').doc(pin.id).set(buildPinDocument(pin, photoUrl));
+    return { ...pin, photoUrl };
   };
 
   // ── Sheet helpers ──
@@ -302,7 +264,7 @@ function startApp() {
     const acoords = ui.addCoords;
     if (acoords) acoords.textContent = `📍 ${center.lat.toFixed(5)}, ${center.lng.toFixed(5)}`;
     resetForm();
-    ui.nameInput.value = ls.get('rsm-last-name') || '';
+    ui.nameInput.value = '';
     openSheet(ui.addBackdrop, ui.addSheet);
     setTimeout(() => { if (!ui.nameInput.value) ui.nameInput.focus(); }, 400);
   });
@@ -378,12 +340,17 @@ function startApp() {
     if (this.value.trim()) { this.classList.remove('err'); ui.nameError.classList.remove('on'); }
   });
 
-  ui.pinButton.addEventListener('click', () => {
+  ui.pinButton.addEventListener('click', async () => {
     const name = ui.nameInput.value.trim().slice(0, MAX_NAME_LENGTH);
     if (!name) {
       ui.nameInput.classList.add('err');
       ui.nameError.classList.add('on');
       ui.nameInput.focus();
+      return;
+    }
+    if (!cloudEnabled || !db) {
+      ui.photoError.textContent = 'Database niet beschikbaar. Probeer het opnieuw zodra Firebase is verbonden.';
+      ui.photoError.classList.add('on');
       return;
     }
     const capturedPhoto = pendingPhoto;
@@ -393,33 +360,30 @@ function startApp() {
       ui.photoError.classList.add('on');
       return;
     }
+    ui.photoError.classList.remove('on');
+    ui.photoError.textContent = '';
     ui.pinButton.textContent = '⏳ Opslaan...';
     ui.pinButton.disabled = true;
-    ls.set('rsm-last-name', name);
     const center = map.getCenter();
     const comment = ui.commentInput.value.trim().slice(0, MAX_COMMENT_LENGTH);
-    const pin = { id: createPinId(), lat: center.lat, lng: center.lng, name, comment, date: new Date().toISOString(), localPhotoData: capturedPhoto || null };
-    if (capturedPhoto && !savePhoto(pin.id, capturedPhoto)) console.warn('Local photo cache failed; continuing with in-memory upload only');
-    pins.push(pin);
-    markPendingUpload(pin.id);
-    if (!savePins(pins)) {
-      pins.pop();
+    const pin = { id: createPinId(), lat: center.lat, lng: center.lng, name, comment, date: new Date().toISOString() };
+    try {
+      await saveToCloud(pin, capturedPhoto);
+      recordPinRate();
+      closeAdd();
+    } catch (e) {
+      logCloudError('Cloud save failed:', e);
+      ui.photoError.textContent = 'Opslaan mislukt. Probeer opnieuw.';
+      ui.photoError.classList.add('on');
+    } finally {
       ui.pinButton.textContent = '📌 PLAK';
       ui.pinButton.disabled = false;
-      alert('Opslag vol!');
-      return;
     }
-    renderPins();
-    ui.pinButton.textContent = '📌 PLAK';
-    ui.pinButton.disabled = false;
-    recordPinRate();
-    closeAdd();
-    void saveToCloud(pin, capturedPhoto);
   });
 
   // ── View sheet ──
   function openView(pin) {
-    const photo = resolvePinPhoto(pin);
+    const photo = sanitizePhotoUrl(resolvePinPhoto(pin));
     ui.viewMeta.textContent = '📅 ' + formatPinDate(pin.date);
     if (photo) { ui.viewPhoto.src = photo; ui.viewPhoto.classList.add('on'); } else { ui.viewPhoto.src = ''; ui.viewPhoto.classList.remove('on'); }
     if (pin.name) { ui.viewName.textContent = pin.name; ui.viewName.classList.add('on'); } else { ui.viewName.classList.remove('on'); }
@@ -433,7 +397,7 @@ function startApp() {
     ui.listTitle.textContent = pinsArr.length + ' stickers op deze plek';
     ui.listBody.innerHTML = '';
     pinsArr.forEach(pin => {
-      const photo = resolvePinPhoto(pin) || RUBEN;
+      const photo = sanitizePhotoUrl(resolvePinPhoto(pin)) || RUBEN;
       const dateStr = formatPinDate(pin.date);
       const item = document.createElement('div');
       item.className = 'list-item';
@@ -471,7 +435,7 @@ function startApp() {
   }
 
   // ── Init ──
-  pins = loadPins();
+  clearLegacyLocalState();
   renderPins();
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(p => map.setView([p.coords.latitude, p.coords.longitude], 14), () => {}, { timeout: 6000, enableHighAccuracy: true });
@@ -484,17 +448,8 @@ function startApp() {
     if (!cloudEnabled) return;
     db.collection('pins').onSnapshot(snap => {
       const cp = []; snap.forEach(d => cp.push(d.data()));
-      const cpIds = new Set(cp.map(c => c.id));
-      const pending = loadPendingUploads();
-      const unsyncedLocal = pins.filter(p => pending.has(p.id) && !cpIds.has(p.id));
-
-      // Cloud is source of truth; only keep local pins that are still pending upload.
-      pins = [...cp, ...unsyncedLocal];
-      savePins(pins);
+      pins = cp;
       renderPins();
-
-      // Retry only pending local pins. Deleted cloud pins won't be recreated.
-      unsyncedLocal.forEach(pin => { void saveToCloud(pin); });
     }, err => logCloudError('Firestore error:', err));
   });
 }
