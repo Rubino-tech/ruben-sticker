@@ -55,6 +55,14 @@ const formatPinDate = value => {
     + ' · '
     + d.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
 };
+const formatDayKey = value => {
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 const readFileAsDataUrl = file => new Promise((resolve, reject) => {
   const reader = new FileReader();
   reader.onload = e => resolve(e.target.result);
@@ -156,6 +164,8 @@ function startApp() {
     closeViewButton: $('vclose'),
     commentInput: $('comment-inp'),
     counterNum: $('counter-num'),
+    dailyPrincess: $('daily-princess'),
+    dailyPrincessMeta: $('daily-princess-meta'),
     galleryInput: $('gal'),
     listBackdrop: $('lb'),
     listBody: $('lsheet-body'),
@@ -234,6 +244,41 @@ function startApp() {
       cg.addLayer(m);
     });
     if (ui.counterNum) ui.counterNum.textContent = pins.length;
+    renderDailyPrincess();
+  };
+
+  const renderDailyPrincess = () => {
+    if (!ui.dailyPrincess || !ui.dailyPrincessMeta) return;
+    const todayKey = formatDayKey(new Date());
+    const counts = new Map();
+    pins.forEach(pin => {
+      if (formatDayKey(pin.date) !== todayKey) return;
+      const name = (pin.name || '').trim();
+      if (!name) return;
+      const key = name.toLocaleLowerCase('nl-NL');
+      const current = counts.get(key);
+      if (current) {
+        current.count += 1;
+      } else {
+        counts.set(key, { name, count: 1 });
+      }
+    });
+
+    if (!counts.size) {
+      ui.dailyPrincess.hidden = true;
+      ui.dailyPrincessMeta.textContent = '';
+      return;
+    }
+
+    const leaders = Array.from(counts.values())
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'nl-NL'));
+    const topCount = leaders[0].count;
+    const winners = leaders
+      .filter(entry => entry.count === topCount)
+      .map(entry => entry.name);
+
+    ui.dailyPrincessMeta.textContent = `${winners.join(' & ')} · ${topCount}`;
+    ui.dailyPrincess.hidden = false;
   };
 
   // ── Cloud: save a single pin to Firestore and Storage ──

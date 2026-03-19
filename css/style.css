@@ -60,20 +60,29 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none;font-f
 }
 
 /* ── Sticker counter ── */
+#top-badges{
+  position:fixed;
+  top:calc(14px + var(--safe-t));
+  left:calc(14px + var(--safe-l));
+  right:calc(14px + var(--safe-r));
+  z-index:700;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  pointer-events:none;
+}
+.top-badge{
+  background:#fff;
+  border:2.5px solid #1a1a2e;
+  border-radius:99px;
+  box-shadow:3px 3px 0 rgba(0,0,0,.12);
+}
 #counter {
-  position: fixed;
-  top: calc(14px + var(--safe-t));
-  left: calc(14px + var(--safe-l));
-  z-index: 700;
-  background: #fff;
-  border: 2.5px solid #1a1a2e;
-  border-radius: 99px;
   padding: 5px 8px 5px 14px;
   display: flex;
   align-items: center;
   gap: 8px;
-  box-shadow: 3px 3px 0 rgba(0,0,0,.12);
-  pointer-events: none;
+  flex-shrink: 0;
 }
 #counter-num {
   font-family: 'Fredoka One', cursive;
@@ -91,6 +100,42 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none;font-f
   object-fit: cover;
   display: block;
   flex-shrink: 0;
+}
+
+#daily-princess{
+  min-width:0;
+  max-width:100%;
+  padding:8px 14px;
+  display:flex;
+  align-items:center;
+}
+#daily-princess[hidden]{
+  display:none;
+}
+.daily-princess-copy{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+.daily-princess-title{
+  font-family:'DM Sans',sans-serif;
+  font-size:.66rem;
+  font-weight:700;
+  line-height:1.1;
+  letter-spacing:.04em;
+  color:#1a1a2e;
+  text-transform:uppercase;
+}
+.daily-princess-meta{
+  font-family:'Fredoka One',cursive;
+  font-size:.95rem;
+  line-height:1.05;
+  color:#1a1a2e;
+  min-width:0;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
 }
 
 /* ── Zoom ── */
@@ -148,6 +193,27 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none;font-f
 .errmsg{color:var(--red);font-size:.75rem;margin-top:5px;display:none;}
 .errmsg.on{display:block;}
 .req{color:var(--red);}
+
+.rules-card{
+  margin-bottom:18px;
+  padding:14px 16px;
+  background:#fff8d6;
+  border:2px solid #1a1a2e;
+  border-radius:16px;
+  box-shadow:3px 3px 0 rgba(0,0,0,.08);
+}
+.rules-title{
+  font-family:'Lilita One',cursive;
+  font-size:1rem;
+  color:var(--dark);
+}
+.rules-list{
+  margin:10px 0 0 18px;
+  color:var(--dark);
+  font-size:.92rem;
+  line-height:1.5;
+}
+.rules-list li+li{margin-top:6px;}
 
 /* ── Photo btns ── */
 .photo-row{display:flex;gap:10px;margin-bottom:12px;}
