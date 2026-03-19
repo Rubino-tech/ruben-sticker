@@ -27,3 +27,8 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./
           exclude_assets: ''
+
+      - name: Inject access code hash
+        run: |
+          HASH=$(echo -n "${{ secrets.ACCESS_CODE }}" | sha256sum | awk '{print $1}')
+          sed -i "s/__ACCESS_HASH__/$HASH/g" js/gate.js
