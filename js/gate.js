@@ -1,5 +1,5 @@
 (function () {
-  const ENCRYPTED_BLOB = "jI4W3070+mUEjs20lxJ1lJBB4GsCpU22/a+osLlE0xW7z/bN27nvT8Q3/tml8SiNveAeJrAzuFGd00pbjsayFt0LC0MBzOlWr0d8K1bHrJo5TR2fnXxqJ5MLtToGt3oN5OFBxiyel8lMa2Amv9KdUFbm78fdbex6rd99cQzzJk+5ZCz4pN+twFHbtf84/ywLPR/BQC88edvn75R5kQoFYr4EL0FjWk6lNhEOgDB6GsYPwWPtVbD2fjV+9F1FfubWhNBZz5EzwBxxMoKUHHPZrYEVReY1+GzHPbpx3T50hm8uhc8siRFBNh1ZcGfBSGYGZzeYjWx5qTaMniJ4hEyvUORPF1NkOkbY6J0C5w4oTlIIfyp2x9Z11L98lQTMO+59dJMBydFEenaH6MINVlkPIxmFY0pjKcMfKHVMlDIwtOlpipVKE8S055ay4k8bzvs="; // ← paste from the encrypt step
+  const ENCRYPTED_BLOB = "jI4W3070+mUEjs20lxJ1lJBB4GsCpU22/a+osLlE0xW7z/bN27nvT8Q3/tml8SiNveAeJrAzuFGd00pbjsayFt0LC0MBzOlWr0d8K1bHrJo5TR2fnXxqJ5MLtToGt3oN5OFBxiyel8lMa2Amv9KdUFbm78fdbex6rd99cQzzJk+5ZCz4pN+twFHbtf84/ywLPR/BQC88edvn75R5kQoFYr4EL0FjWk6lNhEOgDB6GsYPwWPtVbD2fjV+9F1FfubWhNBZz5EzwBxxMoKUHHPZrYEVReY1+GzHPbpx3T50hm8uhc8siRFBNh1ZcGfBSGYGZzeYjWx5qTaMniJ4hEyvUORPF1NkOkbY6J0C5w4oTlIIfyp2x9Z11L98lQTMO+59dJMBydFEenaH6MINVlkPIxmFY0pjKcMfKHVMlDIwtOlpipVKE8S055ay4k8bzvs=";
 
   const COOKIE_NAME  = "rsm_access";
   const COOKIE_DAYS  = 3650;
@@ -44,23 +44,6 @@
     return config;
   }
 
-  function loadScript(src) {
-    return new Promise((res, rej) => {
-      const s = document.createElement("script");
-      s.src = src; s.onload = res; s.onerror = rej;
-      document.head.appendChild(s);
-    });
-  }
-
-  async function initWithConfig(config) {
-    await Promise.all([
-      loadScript("https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"),
-      loadScript("https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"),
-      loadScript("https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"),
-    ]);
-    firebase.initializeApp(config);
-  }
-
   function buildGate() {
     const overlay = document.createElement("div");
     overlay.id = "gate-overlay";
@@ -92,7 +75,7 @@
 
       try {
         const config = await decryptConfig(val);
-        await initWithConfig(config);
+        window.firebaseConfig = config; // ← hand off to app.js
         setCookie(COOKIE_NAME, btoa(val), COOKIE_DAYS);
         overlay.classList.add("gate-fade-out");
         setTimeout(() => overlay.remove(), 600);
@@ -116,7 +99,7 @@
   const saved = getCookie(COOKIE_NAME);
   if (saved) {
     decryptConfig(atob(saved))
-      .then(initWithConfig)
+      .then(config => { window.firebaseConfig = config; }) // ← hand off to app.js
       .catch(() => {
         document.cookie = `${COOKIE_NAME}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/`;
         buildGate();
