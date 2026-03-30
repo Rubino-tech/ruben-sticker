@@ -1,6 +1,6 @@
 /* ── Access Gate ── */
 (function () {
-  const CORRECT_HASH = "6c94e35ccc352d4e9ef0b99562cff995a5741ce8de8ad11b568892934daee366";
+  const CORRECT_HASH = "2c9fea6062419693ccddc7d7e85da3d1f5c10430a88dccdddc0adb8a3b71e2eb";
   const COOKIE_NAME  = "rsm_access";
   const COOKIE_DAYS  = 3650;
 
