@@ -75,7 +75,7 @@ const logCloudError = (label, error) => console.warn(label, error.code || error.
 let db = null, storage = null, cloudEnabled = false;
 
 async function initCloud() {
-  // firebaseConfig is defined in firebase-config.js (not committed to version control)
+  if (window.firebaseConfigReady) await window.firebaseConfigReady;
   if (typeof firebaseConfig === 'undefined' || !firebaseConfig.apiKey || !firebaseConfig.projectId) return;
   try {
     const base = `https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}`;
