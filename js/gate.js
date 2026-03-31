@@ -96,15 +96,20 @@
     });
   }
 
-  const saved = getCookie(COOKIE_NAME);
-  if (saved) {
-    decryptConfig(atob(saved))
-      .then(config => { window.firebaseConfig = config; }) // ← hand off to app.js
-      .catch(() => {
-        document.cookie = `${COOKIE_NAME}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/`;
-        buildGate();
-      });
-  } else {
-    buildGate();
-  }
+let resolveReady;
+window.firebaseConfigReady = new Promise(res => { resolveReady = res; });
+
+const saved = getCookie(COOKIE_NAME);
+if (saved) {
+  decryptConfig(atob(saved))
+    .then(config => { window.firebaseConfig = config; resolveReady(); })
+    .catch(() => {
+      document.cookie = `${COOKIE_NAME}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/`;
+      resolveReady();
+      buildGate();
+    });
+} else {
+  resolveReady();
+  buildGate();
+}
 })();
