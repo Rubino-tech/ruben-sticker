@@ -75,7 +75,8 @@
 
       try {
         const config = await decryptConfig(val);
-        window.firebaseConfig = config; // ← hand off to app.js
+        window.firebaseConfig = config;
+        resolveReady();
         setCookie(COOKIE_NAME, btoa(val), COOKIE_DAYS);
         overlay.classList.add("gate-fade-out");
         setTimeout(() => overlay.remove(), 600);
