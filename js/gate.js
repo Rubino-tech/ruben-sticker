@@ -106,11 +106,9 @@ if (saved) {
     .then(config => { window.firebaseConfig = config; resolveReady(); })
     .catch(() => {
       document.cookie = `${COOKIE_NAME}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/`;
-      resolveReady();
-      buildGate();
+      buildGate(); // no resolveReady() — wait for user to log in
     });
 } else {
-  resolveReady();
-  buildGate();
+  buildGate(); // no resolveReady() — wait for user to log in
 }
 })();
