@@ -115,12 +115,15 @@ const checkRateLimit = () => {
 const recordPinRate = () => { lastPinTime = Date.now(); };
 
 // ── Image compression ──
-const compress = (url, maxW = 900, q = .65) => new Promise(res => {
+const compress = (url, maxW = 900, q = .65, flipH = false) => new Promise(res => {
   const i = new Image(); i.onload = () => {
     const c = document.createElement('canvas');
     let w = i.width, h = i.height;
     if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
-    c.width = w; c.height = h; c.getContext('2d').drawImage(i, 0, 0, w, h);
+    c.width = w; c.height = h;
+    const ctx = c.getContext('2d');
+    if (flipH) { ctx.translate(w, 0); ctx.scale(-1, 1); }
+    ctx.drawImage(i, 0, 0, w, h);
     res(c.toDataURL('image/jpeg', q));
   }; i.onerror = () => res(null); i.src = url;
 });
@@ -378,7 +381,7 @@ function startApp() {
     try {
       ui.photoError.classList.remove('on');
       ui.photoError.textContent = '';
-      const compressedPhoto = await compress(await readFileAsDataUrl(file));
+      const compressedPhoto = await compress(await readFileAsDataUrl(file), 900, .65, input === ui.cameraInput);
       if (!compressedPhoto) {
         ui.photoError.textContent = '⚠️ Afbeelding kon niet worden verwerkt.';
         ui.photoError.classList.add('on');
