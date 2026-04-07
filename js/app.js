@@ -115,28 +115,14 @@ const checkRateLimit = () => {
 const recordPinRate = () => { lastPinTime = Date.now(); };
 
 // ── Image compression ──
-const compress = (file, maxW = 900, q = .65) => new Promise(async res => {
-  try {
-    const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
+const compress = (url, maxW = 900, q = .65) => new Promise(res => {
+  const i = new Image(); i.onload = () => {
     const c = document.createElement('canvas');
-    let w = bitmap.width, h = bitmap.height;
+    let w = i.width, h = i.height;
     if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
-    c.width = w; c.height = h;
-    const ctx = c.getContext('2d');
-    
-    // Check if this is likely a selfie (front camera) by checking EXIF or using heuristics
-    // For selfies, apply horizontal flip
-    const isLikelySelfie = file.type === 'image/jpeg' || file.type === 'image/webp';
-    if (isLikelySelfie) {
-      ctx.scale(-1, 1);
-      ctx.drawImage(bitmap, -w, 0, w, h);
-    } else {
-      ctx.drawImage(bitmap, 0, 0, w, h);
-    }
-    
-    bitmap.close();
+    c.width = w; c.height = h; c.getContext('2d').drawImage(i, 0, 0, w, h);
     res(c.toDataURL('image/jpeg', q));
-  } catch { res(null); }
+  }; i.onerror = () => res(null); i.src = url;
 });
 
 // ── App state ──
@@ -392,7 +378,7 @@ function startApp() {
     try {
       ui.photoError.classList.remove('on');
       ui.photoError.textContent = '';
-      const compressedPhoto = await compress(file);
+      const compressedPhoto = await compress(await readFileAsDataUrl(file));
       if (!compressedPhoto) {
         ui.photoError.textContent = '⚠️ Afbeelding kon niet worden verwerkt.';
         ui.photoError.classList.add('on');
