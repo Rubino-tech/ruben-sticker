@@ -115,17 +115,17 @@ const checkRateLimit = () => {
 const recordPinRate = () => { lastPinTime = Date.now(); };
 
 // ── Image compression ──
-const compress = (url, maxW = 900, q = .65, flipH = false) => new Promise(res => {
-  const i = new Image(); i.onload = () => {
+const compress = (file, maxW = 900, q = .65) => new Promise(async res => {
+  try {
+    const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
     const c = document.createElement('canvas');
-    let w = i.width, h = i.height;
+    let w = bitmap.width, h = bitmap.height;
     if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
     c.width = w; c.height = h;
-    const ctx = c.getContext('2d');
-    if (flipH) { ctx.translate(w, 0); ctx.scale(-1, 1); }
-    ctx.drawImage(i, 0, 0, w, h);
+    c.getContext('2d').drawImage(bitmap, 0, 0, w, h);
+    bitmap.close();
     res(c.toDataURL('image/jpeg', q));
-  }; i.onerror = () => res(null); i.src = url;
+  } catch { res(null); }
 });
 
 // ── App state ──
@@ -381,7 +381,7 @@ function startApp() {
     try {
       ui.photoError.classList.remove('on');
       ui.photoError.textContent = '';
-      const compressedPhoto = await compress(await readFileAsDataUrl(file), 900, .65, input === ui.cameraInput);
+      const compressedPhoto = await compress(file);
       if (!compressedPhoto) {
         ui.photoError.textContent = '⚠️ Afbeelding kon niet worden verwerkt.';
         ui.photoError.classList.add('on');
