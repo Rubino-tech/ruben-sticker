@@ -122,7 +122,18 @@ const compress = (file, maxW = 900, q = .65) => new Promise(async res => {
     let w = bitmap.width, h = bitmap.height;
     if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
     c.width = w; c.height = h;
-    c.getContext('2d').drawImage(bitmap, 0, 0, w, h);
+    const ctx = c.getContext('2d');
+    
+    // Check if this is likely a selfie (front camera) by checking EXIF or using heuristics
+    // For selfies, apply horizontal flip
+    const isLikelySelfie = file.type === 'image/jpeg' || file.type === 'image/webp';
+    if (isLikelySelfie) {
+      ctx.scale(-1, 1);
+      ctx.drawImage(bitmap, -w, 0, w, h);
+    } else {
+      ctx.drawImage(bitmap, 0, 0, w, h);
+    }
+    
     bitmap.close();
     res(c.toDataURL('image/jpeg', q));
   } catch { res(null); }
