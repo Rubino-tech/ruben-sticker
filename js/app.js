@@ -199,7 +199,7 @@ function startApp() {
     maxBounds: [[-85, -180], [85, 180]],
     maxBoundsViscosity: 1
   }).setView([52.3, 5.3], 8);
-  L.tileLayer('https://tile.openstreetmap.nl/tiles/{z}/{x}/{y}.png', {
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     maxZoom: 19,
     noWrap: true
