@@ -7,153 +7,86 @@
 <title>Ruben Sticker Log</title>
 <link rel="icon" type="image/jpeg" href="image/rub.jpg">
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #1a1a2e; color: #fff; font-family: 'DM Sans', system-ui, sans-serif; min-height: 100vh; }
-  #loading { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 16px; color: #aaa; font-size: 15px; }
-  .spinner { width: 32px; height: 32px; border: 3px solid #333; border-top-color: #FFD600; border-radius: 50%; animation: spin 0.8s linear infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  header { display: flex; align-items: center; gap: 12px; padding: 20px 20px 0; }
-  header img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; border: 2px solid #FFD600; }
-  header h1 { font-size: 18px; font-weight: 700; color: #FFD600; }
-  header span { font-size: 13px; color: #888; margin-left: auto; }
-
-  #content { padding: 20px; max-width: 680px; margin: 0 auto; }
-
-  .section-label { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; color: #FFD600; text-transform: uppercase; margin: 0 0 12px; }
-
-  /* Top pin */
-  #top-pin { background: #252545; border-radius: 16px; overflow: hidden; margin-bottom: 32px; border: 1.5px solid #FFD600; }
-  #top-pin .top-img { width: 100%; aspect-ratio: 4/3; object-fit: cover; display: block; background: #1a1a2e; }
-  #top-pin .top-body { padding: 16px; }
-  #top-pin .top-name { font-size: 20px; font-weight: 700; color: #FFD600; margin-bottom: 4px; }
-  #top-pin .top-date { font-size: 12px; color: #888; margin-bottom: 8px; }
-  #top-pin .top-comment { font-size: 14px; color: #ccc; font-style: italic; }
-  #top-pin .top-coords { font-size: 11px; color: #666; margin-top: 8px; }
-
-  /* List */
-  #pin-list { display: flex; flex-direction: column; gap: 12px; }
-  .pin-item { display: flex; gap: 14px; background: #252545; border-radius: 12px; overflow: hidden; align-items: stretch; }
-  .pin-item img { width: 90px; min-height: 90px; object-fit: cover; display: block; flex-shrink: 0; background: #1a1a2e; }
-  .pin-item .item-body { padding: 12px; display: flex; flex-direction: column; justify-content: center; gap: 3px; flex: 1; min-width: 0; }
-  .pin-item .item-name { font-size: 15px; font-weight: 600; color: #FFD600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .pin-item .item-date { font-size: 12px; color: #888; }
-  .pin-item .item-comment { font-size: 13px; color: #bbb; font-style: italic; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .pin-item .item-coords { font-size: 11px; color: #555; margin-top: 4px; }
-
-  #empty { text-align: center; color: #666; padding: 60px 0; font-size: 15px; }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#1a1a2e;color:#fff;font-family:'DM Sans',system-ui,sans-serif;min-height:100vh}
+  #loading{display:none;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:16px;color:#aaa}
+  .spinner{width:32px;height:32px;border:3px solid #333;border-top-color:#FFD600;border-radius:50%;animation:spin 0.8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  header{display:flex;align-items:center;gap:12px;padding:20px}
+  header img{width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid #FFD600}
+  header h1{font-size:18px;font-weight:700;color:#FFD600}
+  header span{font-size:13px;color:#888;margin-left:auto}
+  #content{padding:0 20px 20px;max-width:680px;margin:0 auto}
+  .label{font-size:11px;font-weight:700;letter-spacing:.08em;color:#FFD600;text-transform:uppercase;margin:0 0 12px}
+  .card{background:#252545;border-radius:12px;overflow:hidden;display:flex;margin-bottom:24px;border:1.5px solid #FFD600}
+  .card img{width:120px;min-height:100px;object-fit:cover;flex-shrink:0;background:#1a1a2e}
+  .card.top{flex-direction:column}
+  .card.top img{width:100%;aspect-ratio:4/3;min-height:unset}
+  .body{padding:12px;display:flex;flex-direction:column;gap:4px;min-width:0}
+  .name{font-size:16px;font-weight:700;color:#FFD600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .card.top .name{font-size:20px}
+  .date{font-size:12px;color:#888}
+  .comment{font-size:13px;color:#bbb;font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .coords{font-size:11px;color:#555;margin-top:2px}
+  #list{display:flex;flex-direction:column;gap:10px}
+  #list .card{margin:0;border-color:#333}
+  #empty{text-align:center;color:#666;padding:60px 0}
 </style>
 </head>
 <body>
-
-<div id="loading">
-  <div class="spinner"></div>
-  <span>Laden...</span>
-</div>
-
+<div id="loading"><div class="spinner"></div><span>Laden...</span></div>
 <div id="main" style="display:none">
   <header>
-    <img src="image/rub.jpg" alt="Ruben">
+    <img src="image/rub.jpg" alt="">
     <h1>Sticker Log</h1>
-    <span id="total-count"></span>
+    <span id="count"></span>
   </header>
   <div id="content">
-    <div class="section-label">Laatste sticker</div>
-    <div id="top-pin"></div>
-    <div class="section-label">Alle stickers</div>
-    <div id="pin-list"></div>
-    <div id="empty" style="display:none">Nog geen stickers geplaatst.</div>
+    <div class="label">Laatste sticker</div>
+    <div id="top"></div>
+    <div class="label">Alle stickers</div>
+    <div id="list"></div>
+    <div id="empty" style="display:none">Nog geen stickers.</div>
   </div>
 </div>
-
 <script src="js/gate.js"></script>
 <script>
 const RUBEN = 'image/rub.jpg';
-const FIREBASE_VERSION = '10.11.1';
-
-const formatDate = value => {
-  const d = new Date(value);
-  return d.toLocaleDateString('nl-NL', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })
-    + ' · ' + d.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
-};
-
-function loadScript(src) {
-  return new Promise((res, rej) => {
-    const s = document.createElement('script');
-    s.src = src; s.onload = res; s.onerror = rej;
-    document.head.appendChild(s);
-  });
-}
+const FBV = '10.11.1';
+const fmt = v => new Date(v).toLocaleDateString('nl-NL',{weekday:'short',year:'numeric',month:'short',day:'numeric'}) + ' · ' + new Date(v).toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'});
+const loadScript = src => new Promise((res,rej) => { const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=rej;document.head.appendChild(s); });
+const card = (pin, top) => `
+  <div class="card${top?' top':''}">
+    <img src="${pin.photoUrl||RUBEN}" onerror="this.src='${RUBEN}'" alt="">
+    <div class="body">
+      <div class="name">${pin.name||'Onbekend'}</div>
+      <div class="date">📅 ${fmt(pin.date)}</div>
+      ${pin.comment?`<div class="comment">"${pin.comment}"</div>`:''}
+      <div class="coords">📍 ${Number(pin.lat).toFixed(5)}, ${Number(pin.lng).toFixed(5)}</div>
+    </div>
+  </div>`;
 
 async function init() {
   if (window.firebaseConfigReady) await window.firebaseConfigReady;
-  if (typeof firebaseConfig === 'undefined' || !firebaseConfig.apiKey) {
-    document.querySelector('#loading span').textContent = 'Geen toegang.';
-    return;
-  }
-
-  const base = `https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}`;
+  if (typeof firebaseConfig==='undefined'||!firebaseConfig.apiKey) return;
+  document.getElementById('loading').style.display='flex';
+  const base=`https://www.gstatic.com/firebasejs/${FBV}`;
   await loadScript(`${base}/firebase-app-compat.js`);
   await loadScript(`${base}/firebase-auth-compat.js`);
   await loadScript(`${base}/firebase-firestore-compat.js`);
-
   if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
   await firebase.auth().signInAnonymously();
-  const db = firebase.firestore();
-
-  db.collection('pins').onSnapshot(snap => {
-    const pins = [];
-    snap.forEach(d => pins.push(d.data()));
-    pins.sort((a, b) => new Date(b.date) - new Date(a.date));
-    render(pins);
+  firebase.firestore().collection('pins').onSnapshot(snap => {
+    const pins=[]; snap.forEach(d=>pins.push(d.data()));
+    pins.sort((a,b)=>new Date(b.date)-new Date(a.date));
+    document.getElementById('loading').style.display='none';
+    document.getElementById('main').style.display='block';
+    document.getElementById('count').textContent=pins.length+' stickers';
+    document.getElementById('top').innerHTML=pins.length?card(pins[0],true):'';
+    document.getElementById('list').innerHTML=pins.slice(1).map(p=>card(p,false)).join('');
+    document.getElementById('empty').style.display=pins.length?'none':'block';
   });
 }
-
-function render(pins) {
-  document.getElementById('loading').style.display = 'none';
-  document.getElementById('main').style.display = 'block';
-  document.getElementById('total-count').textContent = pins.length + ' stickers';
-
-  const topEl = document.getElementById('top-pin');
-  const listEl = document.getElementById('pin-list');
-  const emptyEl = document.getElementById('empty');
-  topEl.innerHTML = '';
-  listEl.innerHTML = '';
-
-  if (!pins.length) { emptyEl.style.display = 'block'; return; }
-  emptyEl.style.display = 'none';
-
-  // Top pin
-  const top = pins[0];
-  const topPhoto = top.photoUrl || RUBEN;
-  topEl.innerHTML = `
-    <img class="top-img" src="${topPhoto}" onerror="this.src='${RUBEN}'" alt="">
-    <div class="top-body">
-      <div class="top-name">${top.name || 'Onbekend'}</div>
-      <div class="top-date">📅 ${formatDate(top.date)}</div>
-      ${top.comment ? `<div class="top-comment">"${top.comment}"</div>` : ''}
-      <div class="top-coords">📍 ${Number(top.lat).toFixed(5)}, ${Number(top.lng).toFixed(5)}</div>
-    </div>
-  `;
-
-  // List (skip first)
-  pins.slice(1).forEach(pin => {
-    const photo = pin.photoUrl || RUBEN;
-    const item = document.createElement('div');
-    item.className = 'pin-item';
-    item.innerHTML = `
-      <img src="${photo}" onerror="this.src='${RUBEN}'" alt="">
-      <div class="item-body">
-        <div class="item-name">${pin.name || 'Onbekend'}</div>
-        <div class="item-date">📅 ${formatDate(pin.date)}</div>
-        ${pin.comment ? `<div class="item-comment">"${pin.comment}"</div>` : ''}
-        <div class="item-coords">📍 ${Number(pin.lat).toFixed(5)}, ${Number(pin.lng).toFixed(5)}</div>
-      </div>
-    `;
-    listEl.appendChild(item);
-  });
-}
-
 init();
 </script>
 </body>
