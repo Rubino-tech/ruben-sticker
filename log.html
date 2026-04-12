@@ -68,7 +68,7 @@ const card = (pin, top) => `
 
 async function init() {
   if (window.firebaseConfigReady) await window.firebaseConfigReady;
-  if (typeof firebaseConfig==='undefined'||!firebaseConfig.apiKey) return;
+  if (typeof firebaseConfig==='undefined'||!firebaseConfig.apiKey) { window.location.href='/'; return; }
   document.getElementById('loading').style.display='flex';
   const base=`https://www.gstatic.com/firebasejs/${FBV}`;
   await loadScript(`${base}/firebase-app-compat.js`);
