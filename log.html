@@ -67,6 +67,9 @@ const card = (pin, top) => `
   </div>`;
 
 async function init() {
+  const hasCookie = document.cookie.split(';').some(c => c.trim().startsWith('rsm_access='));
+  if (!hasCookie) { window.location.href = '/'; return; }
+
   if (window.firebaseConfigReady) await window.firebaseConfigReady;
   if (typeof firebaseConfig==='undefined'||!firebaseConfig.apiKey) { window.location.href='/'; return; }
   document.getElementById('loading').style.display='flex';
