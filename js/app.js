@@ -152,6 +152,8 @@ async function initMap() {
 }
 
 function startApp() {
+  document.getElementById('counter').style.cursor = 'pointer';
+document.getElementById('counter').addEventListener('click', () => window.location.href = '/log');
   const ui = {
     addBackdrop: $('ab'),
     addCoords: $('acoords'),
