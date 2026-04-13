@@ -152,8 +152,6 @@ async function initMap() {
 }
 
 function startApp() {
-  document.getElementById('counter').style.cursor = 'pointer';
-document.getElementById('counter').addEventListener('click', () => window.location.href = '/log');
   const ui = {
     addBackdrop: $('ab'),
     addCoords: $('acoords'),
@@ -189,6 +187,8 @@ document.getElementById('counter').addEventListener('click', () => window.locati
     viewPhoto: $('vphoto'),
     viewSheet: $('vsheet')
   };
+  document.getElementById('counter').style.cursor = 'pointer';
+  document.getElementById('counter').addEventListener('click', () => window.location.href = '/log');
   // ── Set button avatar ──
   ui.buttonAvatar.src = RUBEN;
 
