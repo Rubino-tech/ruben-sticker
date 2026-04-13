@@ -187,8 +187,6 @@ function startApp() {
     viewPhoto: $('vphoto'),
     viewSheet: $('vsheet')
   };
-  document.getElementById('counter').style.cursor = 'pointer';
-  document.getElementById('counter').addEventListener('click', () => window.location.href = '/log');
   // ── Set button avatar ──
   ui.buttonAvatar.src = RUBEN;
 
