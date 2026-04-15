@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#1a1a2e">
+<title>Test Mode</title>
+<link rel="icon" type="image/jpeg" href="image/rub.jpg">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.css"/>
+<link rel="stylesheet" href="css/style.css">
+<style>
+  #test-badge { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); background: #FFD600; color: #1a1a2e; font-size: 12px; font-weight: 700; padding: 4px 14px; border-radius: 999px; z-index: 9999; pointer-events: none; font-family: 'DM Sans', system-ui, sans-serif; }
+</style>
+</head>
+<body>
+
+<div id="test-badge">🧪 TEST MODE</div>
+
+<div id="loading">
+  <h1>Ruben<br>Sticker Map</h1>
+  <div class="spinner"></div>
+  <p id="loading-msg">Laden...</p>
+  <p class="err" id="loading-err">❌ Kon kaart niet laden.</p>
+</div>
+
+<div id="map"></div>
+
+<div id="top-badges">
+  <div id="counter" class="top-badge">
+    <span id="counter-num">0</span>
+    <img id="counter-avatar" src="image/rub.jpg" alt="Ruben">
+  </div>
+  <div id="daily-princess" class="top-badge" aria-live="polite" hidden>
+    <span class="daily-princess-copy">
+      <span class="daily-princess-title">Plakprinses van de dag</span>
+      <span class="daily-princess-meta" id="daily-princess-meta"></span>
+    </span>
+  </div>
+</div>
+
+<div id="crosshair">
+  <div class="ch-v"></div><div class="ch-h"></div><div class="ch-dot"></div>
+</div>
+
+<button id="add-pin-btn" aria-label="Plak Ruben">
+  Plak
+  <img id="btn-avatar" src="" alt="Ruben">
+</button>
+
+<!-- ADD SHEET -->
+<div class="sbackdrop" id="ab"></div>
+<div class="sheet" id="asheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-body">
+    <div class="rules-card">
+      <div class="rules-title">Stickerregels</div>
+      <ol class="rules-list">
+        <li>Op de foto's moet een Ruben sticker staan.</li>
+        <li>Gebruik alleen je echte naam of alias.</li>
+      </ol>
+    </div>
+    <div class="field">
+      <label>👤 Jouw naam <span class="req">*</span></label>
+      <input type="text" id="name-inp" placeholder="Vul je naam in..." maxlength="50">
+      <div class="errmsg" id="name-err">⚠️ Naam is verplicht!</div>
+    </div>
+    <div class="field">
+      <label>📸 Foto (optioneel)</label>
+      <div class="photo-row">
+        <button class="pbtn" type="button"><span class="pi">🖼️</span>Galerij<input type="file" id="gal" accept="image/*"></button>
+        <button class="pbtn" type="button"><span class="pi">📷</span>Camera<input type="file" id="cam" accept="image/*" capture="environment"></button>
+      </div>
+      <div class="prev-wrap" id="prevwrap">
+        <img id="previmg" src="" alt="">
+        <button class="rm-photo" id="rmbtn" type="button">✕</button>
+      </div>
+      <div class="errmsg" id="photo-err"></div>
+    </div>
+    <div class="field">
+      <label>💬 Opmerking (optioneel)</label>
+      <textarea id="comment-inp" placeholder="Schrijf iets..." rows="3" maxlength="400"></textarea>
+    </div>
+  </div>
+  <div class="sheet-foot"><button class="btn-pin" id="pinbtn">📌 PLAK</button></div>
+</div>
+
+<!-- VIEW SHEET -->
+<div class="sbackdrop" id="vb"></div>
+<div class="sheet" id="vsheet">
+  <div class="sheet-handle"></div>
+  <img class="v-photo" id="vphoto" src="" alt="">
+  <div class="sheet-body">
+    <div class="v-name" id="vname"></div>
+    <div class="v-meta" id="vmeta"></div>
+    <div class="v-comment" id="vcomment"></div>
+    <div class="v-none" id="vnone" style="display:none"></div>
+  </div>
+  <div class="sheet-foot"><button class="btn-close" id="vclose">Sluiten</button></div>
+</div>
+
+<!-- LIST SHEET -->
+<div class="sbackdrop" id="lb"></div>
+<div class="sheet" id="lsheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-head">
+    <div><h2 id="lsheet-title">Stickers op deze plek</h2></div>
+    <button class="sheet-x" id="lx">✕</button>
+  </div>
+  <div class="sheet-body" id="lsheet-body"></div>
+</div>
+
+<script>
+  // Inject mock firebaseConfig so app.js skips real Firebase init
+  window.firebaseConfig = null;
+  window.firebaseConfigReady = Promise.resolve();
+</script>
+<script src="js/app.js"></script>
+</body>
+</html>
