@@ -208,10 +208,10 @@ function startApp() {
   L.control.zoom({ position: 'topright' }).addTo(map);
 
   // ── Icons ──
-  const makePin = photo => L.divIcon({
-    html: `<div class="photo-pin"><div class="photo-pin-circle"><img src="${photo || RUBEN}" onerror="this.src='${RUBEN}'"></div><div class="photo-pin-tail"></div></div>`,
-    iconSize: [48, 58], iconAnchor: [24, 58], className: ''
-  });
+  const makePin = (photo, isLatest = false) => L.divIcon({
+  html: `<div class="photo-pin"><div class="photo-pin-circle" style="${isLatest ? 'border-color:#4A90E2;box-shadow:0 0 0 2px #4A90E2;' : ''}"><img src="${photo || RUBEN}" onerror="this.src='${RUBEN}'"></div><div class="photo-pin-tail" style="${isLatest ? 'background:#4A90E2;' : ''}"></div></div>`,
+  iconSize: [48, 58], iconAnchor: [24, 58], className: ''
+});
 
   const makeCluster = n => {
     const s = n < 10 ? 54 : n < 100 ? 62 : 72;
@@ -238,15 +238,17 @@ function startApp() {
   });
 
   const renderPins = () => {
-    cg.clearLayers();
-    pins.forEach(pin => {
-      const m = L.marker([pin.lat, pin.lng], { icon: makePin(sanitizePhotoUrl(resolvePinPhoto(pin))), pinData: pin });
-      m.on('click', () => openView(pin));
-      cg.addLayer(m);
-    });
-    if (ui.counterNum) ui.counterNum.textContent = pins.length;
-    renderDailyPrincess();
-  };
+  cg.clearLayers();
+  const latestId = pins.length ? [...pins].sort((a, b) => new Date(b.date) - new Date(a.date))[0].id : null;
+  pins.forEach(pin => {
+    const isLatest = pin.id === latestId;
+    const m = L.marker([pin.lat, pin.lng], { icon: makePin(sanitizePhotoUrl(resolvePinPhoto(pin)), isLatest), pinData: pin });
+    m.on('click', () => openView(pin));
+    cg.addLayer(m);
+  });
+  if (ui.counterNum) ui.counterNum.textContent = pins.length;
+  renderDailyPrincess();
+};
 
   const renderDailyPrincess = () => {
     if (!ui.dailyPrincess || !ui.dailyPrincessMeta) return;
