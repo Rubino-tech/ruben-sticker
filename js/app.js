@@ -200,6 +200,7 @@ function startApp() {
     maxBounds: [[-85, -180], [85, 180]],
     maxBoundsViscosity: 1
   }).setView([52.3, 5.3], 8);
+  
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     maxZoom: 19,
@@ -207,6 +208,12 @@ function startApp() {
   }).addTo(map);
   L.control.zoom({ position: 'topright' }).addTo(map);
 
+  const params = new URLSearchParams(window.location.search);
+const qLat = parseFloat(params.get('lat'));
+const qLng = parseFloat(params.get('lng'));
+if (!isNaN(qLat) && !isNaN(qLng)) {
+  map.setView([qLat, qLng], 16);
+}
   // ── Icons ──
   const makePin = photo => L.divIcon({
   html: `<div class="photo-pin"><div class="photo-pin-circle"><img src="${photo || RUBEN}" onerror="this.src='${RUBEN}'"></div><div class="photo-pin-tail"></div></div>`,
