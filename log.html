@@ -59,17 +59,15 @@ const FBV = '10.11.1';
 const fmt = v => new Date(v).toLocaleDateString('nl-NL',{weekday:'short',year:'numeric',month:'short',day:'numeric'}) + ' · ' + new Date(v).toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'});
 const loadScript = src => new Promise((res,rej) => { const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=rej;document.head.appendChild(s); });
 const card = (pin, top) => `
-  <a href="/?lat=${pin.lat}&lng=${pin.lng}" style="text-decoration:none;display:block">
-    <div class="card${top?' top':''}">
-      <img src="${pin.photoUrl||RUBEN}" onerror="this.src='${RUBEN}'" alt="" style="cursor:zoom-in" onclick="event.preventDefault();openLightbox(this.src)">
-      <div class="body">
-        <div class="name">${pin.name||'Onbekend'}</div>
-        <div class="date">📅 ${fmt(pin.date)}</div>
-        ${pin.comment?`<div class="comment">"${pin.comment}"</div>`:''}
-        <div class="coords">📍 ${Number(pin.lat).toFixed(5)}, ${Number(pin.lng).toFixed(5)}</div>
-      </div>
+  <div class="card${top?' top':''}">
+    <img src="${pin.photoUrl||RUBEN}" onerror="this.src='${RUBEN}'" alt="" style="cursor:zoom-in" onclick="openLightbox(this.src)">
+    <div class="body">
+      <div class="name">${pin.name||'Onbekend'}</div>
+      <div class="date">📅 ${fmt(pin.date)}</div>
+      ${pin.comment?`<div class="comment">"${pin.comment}"</div>`:''}
+      <div class="coords">📍 ${Number(pin.lat).toFixed(5)}, ${Number(pin.lng).toFixed(5)}</div>
     </div>
-  </a>`;
+  </div>`;
 
 function openLightbox(src) {
   const lb = document.getElementById('lightbox');
