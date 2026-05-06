@@ -147,6 +147,9 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none;font-f
 .photo-pin-circle{position:relative;width:48px;height:48px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 2px var(--dark);overflow:hidden;background:#ddd;}
 .photo-pin-circle img{display:block;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) scale(1.15);width:100%;height:100%;object-fit:cover;}
 .photo-pin-tail{width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-top:11px solid var(--dark);margin-top:-1px;}
+.photo-pin--latest{filter:drop-shadow(0 0 8px rgba(30,136,229,.8)) drop-shadow(2px 3px 5px rgba(0,0,0,.5));}
+.photo-pin-circle--latest{border-color:#1E88E5;box-shadow:0 0 0 2px #1E88E5;}
+.photo-pin-tail--latest{border-top-color:#1E88E5;}
 
 /* ── Sheet backdrop ── */
 .sbackdrop{position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:opacity .3s;}
