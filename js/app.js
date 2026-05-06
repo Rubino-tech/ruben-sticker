@@ -208,23 +208,33 @@ function startApp() {
   }).addTo(map);
   L.control.zoom({ position: 'topright' }).addTo(map);
   
+  // ── Latest pin id (kept in scope so iconCreateFunction can read it) ──
+  let latestId = null;
+  let recentIds = new Set();
+
   // ── Icons ──
   const makePin = (photo, isLatest = false) => L.divIcon({
   html: `<div class="photo-pin${isLatest ? ' photo-pin--latest' : ''}"><div class="photo-pin-circle${isLatest ? ' photo-pin-circle--latest' : ''}"><img src="${photo || RUBEN}" onerror="this.src='${RUBEN}'"></div><div class="photo-pin-tail${isLatest ? ' photo-pin-tail--latest' : ''}"></div></div>`,
   iconSize: [48, 58], iconAnchor: [24, 58], className: ''
 });
 
-  const makeCluster = n => {
+  const makeCluster = (n, isLatest = false) => {
     const s = n < 10 ? 54 : n < 100 ? 62 : 72;
+    const border = isLatest ? '#1E88E5' : '#fff';
+    const ring   = isLatest ? '#1E88E5' : '#1a1a2e';
+    const glow   = isLatest ? ',0 0 0 5px rgba(30,136,229,.25)' : '';
     return L.divIcon({
-      html: `<div style="width:${s}px;height:${s}px;border-radius:50%;border:4px solid #fff;box-shadow:0 0 0 2.5px #1a1a2e,3px 3px 8px rgba(0,0,0,.35);overflow:hidden;position:relative;display:flex;align-items:center;justify-content:center;background:#1a1a2e"><img src="${RUBEN}" style="width:100%;height:100%;object-fit:cover;opacity:.4;position:absolute;inset:0"><span style="position:relative;z-index:1;font-family:'DM Sans',system-ui,sans-serif;color:#FFD600;font-size:${n < 100 ? 16 : 13}px;text-shadow:1px 1px 3px rgba(0,0,0,.9)">${n}</span></div>`,
-      iconSize: [s, s], iconAnchor: [s / 2, s / 2], className: ''
+      html: `<div style="width:${s}px;height:${s}px;border-radius:50%;border:4px solid ${border};box-shadow:0 0 0 2.5px ${ring},3px 3px 8px rgba(0,0,0,.35)${glow};overflow:hidden;position:relative;display:flex;align-items:center;justify-content:center;background:#1a1a2e"><img src="${RUBEN}" style="width:100%;height:100%;object-fit:cover;opacity:.4;position:absolute;inset:0"><span style="position:relative;z-index:1;font-family:'DM Sans',system-ui,sans-serif;color:#FFD600;font-size:${n < 100 ? 16 : 13}px;text-shadow:1px 1px 3px rgba(0,0,0,.9)">${n}</span></div>`,
+      iconSize: [s, s], iconAnchor: [s / 2, s / 2], className: isLatest ? 'cluster-latest' : ''
     });
   };
 
   const cg = L.markerClusterGroup({
     maxClusterRadius: 60, spiderfyOnMaxZoom: false, showCoverageOnHover: false, zoomToBoundsOnClick: false,
-    iconCreateFunction: c => makeCluster(c.getChildCount())
+    iconCreateFunction: c => {
+      const hasLatest = recentIds.size > 0 && c.getAllChildMarkers().some(m => recentIds.has(m.options.pinData?.id));
+      return makeCluster(c.getChildCount(), hasLatest);
+    }
   });
   map.addLayer(cg);
 
@@ -240,14 +250,12 @@ function startApp() {
 
   const renderPins = () => {
   cg.clearLayers();
-  // Find the id of the most recently added pin
-  const latestPin = pins.reduce((latest, pin) => {
-    if (!latest) return pin;
-    return new Date(pin.date) > new Date(latest.date) ? pin : latest;
-  }, null);
-  const latestId = latestPin ? latestPin.id : null;
+  // Highlight all pins placed in the last 12 hours
+  const cutoff = Date.now() - 12 * 60 * 60 * 1000;
+  latestId = null; // unused now but keep var clean
+  recentIds = new Set(pins.filter(pin => new Date(pin.date).getTime() >= cutoff).map(pin => pin.id));
   pins.forEach(pin => {
-    const isLatest = pin.id === latestId;
+    const isLatest = recentIds.has(pin.id);
     const m = L.marker([pin.lat, pin.lng], { icon: makePin(sanitizePhotoUrl(resolvePinPhoto(pin)), isLatest), pinData: pin });
     m.on('click', () => openView(pin));
     cg.addLayer(m);
