@@ -250,8 +250,8 @@ function startApp() {
 
   const renderPins = () => {
   cg.clearLayers();
-  // Highlight all pins placed in the last 12 hours
-  const cutoff = Date.now() - 12 * 60 * 60 * 1000;
+  // Highlight all pins placed in the last 14 hours
+  const cutoff = Date.now() - 14 * 60 * 60 * 1000;
   latestId = null; // unused now but keep var clean
   recentIds = new Set(pins.filter(pin => new Date(pin.date).getTime() >= cutoff).map(pin => pin.id));
   pins.forEach(pin => {
