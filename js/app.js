@@ -209,8 +209,8 @@ function startApp() {
   L.control.zoom({ position: 'topright' }).addTo(map);
   
   // ── Icons ──
-  const makePin = photo => L.divIcon({
-  html: `<div class="photo-pin"><div class="photo-pin-circle"><img src="${photo || RUBEN}" onerror="this.src='${RUBEN}'"></div><div class="photo-pin-tail"></div></div>`,
+  const makePin = (photo, isLatest = false) => L.divIcon({
+  html: `<div class="photo-pin${isLatest ? ' photo-pin--latest' : ''}"><div class="photo-pin-circle${isLatest ? ' photo-pin-circle--latest' : ''}"><img src="${photo || RUBEN}" onerror="this.src='${RUBEN}'"></div><div class="photo-pin-tail${isLatest ? ' photo-pin-tail--latest' : ''}"></div></div>`,
   iconSize: [48, 58], iconAnchor: [24, 58], className: ''
 });
 
@@ -240,8 +240,15 @@ function startApp() {
 
   const renderPins = () => {
   cg.clearLayers();
+  // Find the id of the most recently added pin
+  const latestPin = pins.reduce((latest, pin) => {
+    if (!latest) return pin;
+    return new Date(pin.date) > new Date(latest.date) ? pin : latest;
+  }, null);
+  const latestId = latestPin ? latestPin.id : null;
   pins.forEach(pin => {
-    const m = L.marker([pin.lat, pin.lng], { icon: makePin(sanitizePhotoUrl(resolvePinPhoto(pin))), pinData: pin });
+    const isLatest = pin.id === latestId;
+    const m = L.marker([pin.lat, pin.lng], { icon: makePin(sanitizePhotoUrl(resolvePinPhoto(pin)), isLatest), pinData: pin });
     m.on('click', () => openView(pin));
     cg.addLayer(m);
   });
