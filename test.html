@@ -16,7 +16,8 @@
 </head>
 <body>
 
-<div id="test-badge">🧪 TEST MODE</div>
+<div id="test-badge">🧪 TEST MODE — data stays in this browser, nothing is sent to Firebase</div>
+<button id="test-reset" style="position:fixed;top:52px;left:50%;transform:translateX(-50%);background:#1a1a2e;color:#FFD600;font-size:11px;font-weight:700;padding:5px 12px;border:none;border-radius:999px;z-index:9999;font-family:'DM Sans',system-ui,sans-serif;cursor:pointer">↺ Reset test data</button>
 
 <div id="loading">
   <h1>Ruben<br>Sticker Map</h1>
@@ -38,6 +39,10 @@
       <span class="daily-princess-title">Plakprinses van de dag</span>
       <span class="daily-princess-meta" id="daily-princess-meta"></span>
     </span>
+  </div>
+
+  <div id="world-badge" class="top-badge" aria-live="polite" hidden>
+    🌍 <span id="world-badge-count">0</span> <span id="world-badge-label">landen</span>
   </div>
 </div>
 
@@ -95,6 +100,7 @@
   <div class="sheet-body">
     <div class="v-name" id="vname"></div>
     <div class="v-meta" id="vmeta"></div>
+    <div class="v-views" id="vviews"></div>
     <div class="v-comment" id="vcomment"></div>
     <div class="v-none" id="vnone" style="display:none"></div>
   </div>
@@ -112,11 +118,43 @@
   <div class="sheet-body" id="lsheet-body"></div>
 </div>
 
+<script src="js/gate.js"></script>
 <script>
-  // Inject mock firebaseConfig so app.js skips real Firebase init
-  window.firebaseConfig = null;
-  window.firebaseConfigReady = Promise.resolve();
+  // Test mode: writes always go to an in-browser mock database — nothing
+  // you do here (adding stickers, opening them) is ever sent to Firebase.
+  window.RSM_MOCK_CLOUD = true;
+
+  // Optional: seed that mock database with a READ-ONLY snapshot of your
+  // real stickers, so testing feels realistic. This needs your real access
+  // code (same one as the live site) to decrypt the Firebase config — the
+  // gate above will ask for it. You can skip it entirely for a fully
+  // offline test session with no real data involved.
+  window.RSM_SEED_FROM_REAL = true;
+
+  let resolveSkip;
+  const skipPromise = new Promise(res => { resolveSkip = res; });
+  window.RSM_CONFIG_OR_SKIP = window.firebaseConfigReady
+    ? Promise.race([window.firebaseConfigReady, skipPromise])
+    : skipPromise;
+
+  // If the gate prompt is showing (no saved code yet), add a way to skip it.
+  const gateOverlay = document.getElementById('gate-overlay');
+  const gateBox = document.getElementById('gate-box');
+  if (gateOverlay && gateBox) {
+    const skip = document.createElement('button');
+    skip.type = 'button';
+    skip.textContent = 'Overslaan — alleen offline testen';
+    skip.style.cssText = 'margin-top:14px;background:none;border:none;color:#999;font-size:12px;text-decoration:underline;cursor:pointer;display:block;width:100%;text-align:center';
+    skip.addEventListener('click', () => { gateOverlay.remove(); resolveSkip(); });
+    gateBox.appendChild(skip);
+  }
 </script>
 <script src="js/app.js"></script>
+<script>
+  document.getElementById('test-reset').addEventListener('click', () => {
+    Object.keys(localStorage).forEach(k => { if (k.startsWith('rsm-')) localStorage.removeItem(k); });
+    location.reload();
+  });
+</script>
 </body>
 </html>
