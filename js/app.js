@@ -298,8 +298,7 @@ const updateWorldCoverage = async (pinsSnapshot, ui, onCountryCount) => {
       const countryList = [...countries].sort((a, b) => a.localeCompare(b));
       console.log(`🧪 Country count check (${countries.size}/${WORLD_COUNTRY_COUNT}): ${countryList.join(', ') || 'none'}`);
     }
-    ui.worldBadgeCount.textContent = countries.size;
-    if (ui.worldBadgeLabel) ui.worldBadgeLabel.textContent = countries.size === 1 ? 'land' : 'landen';
+    ui.worldBadgeCount.textContent = `${countries.size}/${WORLD_COUNTRY_COUNT}`;
     ui.worldBadge.title = `${countries.size} van de ${WORLD_COUNTRY_COUNT} landen`;
     onCountryCount(countries.size);
   } catch (e) { logCloudError('World coverage calc failed:', e); }
@@ -427,8 +426,7 @@ function startApp() {
     viewSheet: $('vsheet'),
     viewViews: $('vviews'),
     worldBadge: $('world-badge'),
-    worldBadgeCount: $('world-badge-count'),
-    worldBadgeLabel: $('world-badge-label')
+    worldBadgeCount: $('world-badge-count')
   };
 
   // ── Set button avatar ──
