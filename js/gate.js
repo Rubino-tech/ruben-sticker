@@ -99,6 +99,7 @@
 
 let resolveReady;
 window.firebaseConfigReady = new Promise(res => { resolveReady = res; });
+window.RSM_GATE = { decryptConfig }; // exposed read-only for test.html's optional real-data seed
 
 const saved = getCookie(COOKIE_NAME);
 if (saved) {

@@ -47,7 +47,8 @@ const buildPinDocument = (pin, photoUrl = null) => ({
   name: pin.name || '',
   comment: pin.comment || '',
   date: pin.date,
-  photoUrl: photoUrl || null
+  photoUrl: photoUrl || null,
+  views: pin.views || 0
 });
 const formatPinDate = value => {
   const d = new Date(value);
@@ -74,7 +75,114 @@ const logCloudError = (label, error) => console.warn(label, error.code || error.
 // ── Cloud sync ──
 let db = null, storage = null, cloudEnabled = false;
 
+// ── Mock Firestore for local/offline testing (js/test.html) ──
+// Implements only the subset of the Firestore API app.js actually calls.
+// Everything is stored under one localStorage key, isolated from any real
+// Firebase project — nothing here ever touches the network.
+const MOCK_STORE_KEY = 'rsm-test-pins-v1';
+function createMockFirestore(seedPins = []) {
+  let store = {};
+  try { store = JSON.parse(localStorage.getItem(MOCK_STORE_KEY) || '{}'); } catch { store = {}; }
+  // Real stickers are seeded UNDER whatever's already local, so a previous
+  // test session's local edits (e.g. a bumped view count) always win and
+  // don't get reset back to the live snapshot on every reload.
+  let seeded = false;
+  seedPins.forEach(p => { if (p && p.id && !(p.id in store)) { store[p.id] = { ...p }; seeded = true; } });
+  const listeners = new Set();
+  const persist = () => { try { localStorage.setItem(MOCK_STORE_KEY, JSON.stringify(store)); } catch {} };
+  if (seeded) persist();
+  const notify = () => {
+    const docs = Object.values(store).map(data => ({ data: () => data }));
+    listeners.forEach(cb => cb({ forEach: fn => docs.forEach(fn) }));
+  };
+  const docRef = id => ({
+    set: async data => { store[id] = { ...data }; persist(); notify(); },
+    update: async patch => {
+      const current = store[id] || {};
+      const next = { ...current };
+      Object.entries(patch).forEach(([k, v]) => {
+        next[k] = (v && v.__isIncrement) ? (Number(current[k]) || 0) + v.delta : v;
+      });
+      store[id] = next; persist(); notify();
+    }
+  });
+  return {
+    collection: () => ({
+      doc: id => docRef(id),
+      onSnapshot: (cb) => { listeners.add(cb); notify(); return () => listeners.delete(cb); }
+    })
+  };
+}
+
+// Reads the real `pins` collection via the plain Firestore REST API — no
+// Firebase SDK is loaded for this, so there is no write-capable client in
+// memory at all in test mode. This is a one-time, read-only snapshot.
+function firestoreRestValue(v) {
+  if (v.stringValue !== undefined) return v.stringValue;
+  if (v.integerValue !== undefined) return parseInt(v.integerValue, 10);
+  if (v.doubleValue !== undefined) return v.doubleValue;
+  if (v.booleanValue !== undefined) return v.booleanValue;
+  if (v.nullValue !== undefined) return null;
+  if (v.mapValue !== undefined) return firestoreRestToPlain(v.mapValue.fields || {});
+  if (v.arrayValue !== undefined) return (v.arrayValue.values || []).map(firestoreRestValue);
+  if (v.timestampValue !== undefined) return v.timestampValue;
+  return null;
+}
+function firestoreRestToPlain(fields) {
+  const out = {};
+  Object.entries(fields || {}).forEach(([k, v]) => { out[k] = firestoreRestValue(v); });
+  return out;
+}
+async function fetchRealPinsReadOnly(cfg) {
+  // Anonymous sign-in via the Identity Toolkit REST API (mirrors
+  // firebase.auth().signInAnonymously(), no Auth SDK needed).
+  const signUpRes = await fetch(
+    `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${encodeURIComponent(cfg.apiKey)}`,
+    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ returnSecureToken: true }) }
+  );
+  if (!signUpRes.ok) throw new Error('Anonymous auth failed: HTTP ' + signUpRes.status);
+  const { idToken } = await signUpRes.json();
+
+  const base = `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(cfg.projectId)}/databases/(default)/documents/pins`;
+  const pins = [];
+  let pageToken = '';
+  do {
+    const url = base + (pageToken ? `?pageToken=${encodeURIComponent(pageToken)}` : '');
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${idToken}` } });
+    if (!res.ok) throw new Error('Firestore read failed: HTTP ' + res.status);
+    const body = await res.json();
+    (body.documents || []).forEach(doc => pins.push(firestoreRestToPlain(doc.fields)));
+    pageToken = body.nextPageToken || '';
+  } while (pageToken);
+  return pins;
+}
+
 async function initCloud() {
+  // Test mode: skip real Firebase entirely, use an in-browser mock instead.
+  if (window.RSM_MOCK_CLOUD) {
+    window.firebase = window.firebase || {};
+    firebase.firestore = firebase.firestore || {};
+    firebase.firestore.FieldValue = firebase.firestore.FieldValue || { increment: delta => ({ __isIncrement: true, delta }) };
+
+    let seedPins = [];
+    if (window.RSM_SEED_FROM_REAL && window.RSM_CONFIG_OR_SKIP) {
+      try {
+        await window.RSM_CONFIG_OR_SKIP; // resolves on real code entry OR explicit skip
+        if (typeof firebaseConfig !== 'undefined' && firebaseConfig && firebaseConfig.apiKey && firebaseConfig.projectId) {
+          seedPins = await fetchRealPinsReadOnly(firebaseConfig);
+          console.log(`🧪 Loaded ${seedPins.length} real stickers as a read-only snapshot — nothing is written back to Firebase`);
+        } else {
+          console.log('🧪 Testing fully offline (no real stickers loaded)');
+        }
+      } catch (e) {
+        console.warn('Could not load real stickers for test seed — continuing offline:', e);
+      }
+    }
+    db = createMockFirestore(seedPins);
+    cloudEnabled = true;
+    console.log('🧪 Mock cloud active — writes stay in this browser only');
+    return;
+  }
   if (window.firebaseConfigReady) await window.firebaseConfigReady;
   if (typeof firebaseConfig === 'undefined' || !firebaseConfig.apiKey || !firebaseConfig.projectId) return;
   try {
@@ -113,6 +221,136 @@ const checkRateLimit = () => {
 };
 
 const recordPinRate = () => { lastPinTime = Date.now(); };
+
+// ── World coverage (countries with at least one sticker) ──
+// Fully offline: uses a bundled, simplified country-boundaries file and a
+// small point-in-polygon test. No external geocoding API, no rate limits.
+const WORLD_COUNTRY_COUNT = 195; // 193 UN member states + 2 UN observer states
+let countryFeatures = null;
+const pinCountryCache = new Map(); // pinId -> country name | null
+
+const pointInRing = (pt, ring) => {
+  const [x, y] = pt;
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i];
+    const [xj, yj] = ring[j];
+    const intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+};
+
+const pointInGeometry = (pt, geometry) => {
+  const polys = geometry.type === 'Polygon' ? [geometry.coordinates] : geometry.coordinates;
+  for (const rings of polys) {
+    if (!rings.length) continue;
+    if (pointInRing(pt, rings[0]) && !rings.slice(1).some(hole => pointInRing(pt, hole))) return true;
+  }
+  return false;
+};
+
+const bboxOf = geometry => {
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  const walk = coords => {
+    if (typeof coords[0] === 'number') {
+      const [x, y] = coords;
+      if (x < minX) minX = x; if (x > maxX) maxX = x;
+      if (y < minY) minY = y; if (y > maxY) maxY = y;
+    } else coords.forEach(walk);
+  };
+  walk(geometry.coordinates);
+  return [minX, minY, maxX, maxY];
+};
+
+const loadCountryFeatures = async () => {
+  if (countryFeatures) return countryFeatures;
+  const res = await fetch('geo/countries.min.json');
+  const data = await res.json();
+  countryFeatures = data.features.map(f => ({ ...f, bbox: bboxOf(f.geometry) }));
+  return countryFeatures;
+};
+
+const findCountryName = (lat, lng, features) => {
+  const pt = [lng, lat];
+  for (const f of features) {
+    const [minX, minY, maxX, maxY] = f.bbox;
+    if (lng < minX || lng > maxX || lat < minY || lat > maxY) continue;
+    if (pointInGeometry(pt, f.geometry)) return f.properties.name;
+  }
+  return null;
+};
+
+const updateWorldCoverage = async (pinsSnapshot, ui, onCountryCount) => {
+  if (!ui.worldBadge || !ui.worldBadgeCount) return;
+  try {
+    const features = await loadCountryFeatures();
+    const countries = new Set();
+    pinsSnapshot.forEach(pin => {
+      let name = pinCountryCache.get(pin.id);
+      if (name === undefined) {
+        name = findCountryName(pin.lat, pin.lng, features);
+        pinCountryCache.set(pin.id, name);
+      }
+      if (name) countries.add(name);
+    });
+    if (window.RSM_MOCK_CLOUD) {
+      const countryList = [...countries].sort((a, b) => a.localeCompare(b));
+      console.log(`🧪 Country count check (${countries.size}/${WORLD_COUNTRY_COUNT}): ${countryList.join(', ') || 'none'}`);
+    }
+    ui.worldBadgeCount.textContent = `${countries.size}/${WORLD_COUNTRY_COUNT}`;
+    ui.worldBadge.title = `${countries.size} van de ${WORLD_COUNTRY_COUNT} landen`;
+    onCountryCount(countries.size);
+  } catch (e) { logCloudError('World coverage calc failed:', e); }
+};
+
+// ── View-count cooldown (1 counted view per sticker per device per 30 min) ──
+const VIEW_COOLDOWN_MS = 30 * 60 * 1000; // 30 minutes
+const LS_VIEW_PREFIX = 'rsm-view-';
+
+const getLastViewed = pinId => {
+  try {
+    const raw = localStorage.getItem(LS_VIEW_PREFIX + pinId);
+    return raw ? parseInt(raw, 10) || 0 : 0;
+  } catch { return 0; }
+};
+
+const setLastViewed = pinId => {
+  try { localStorage.setItem(LS_VIEW_PREFIX + pinId, String(Date.now())); } catch {}
+};
+
+// Sweeps out expired view-cooldown entries so localStorage doesn't grow forever.
+const pruneViewCooldowns = () => {
+  try {
+    const now = Date.now();
+    const stale = [];
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith(LS_VIEW_PREFIX)) continue;
+      const ts = parseInt(localStorage.getItem(key), 10) || 0;
+      if (now - ts >= VIEW_COOLDOWN_MS) stale.push(key);
+    }
+    stale.forEach(key => localStorage.removeItem(key));
+  } catch {}
+};
+
+/**
+ * Counts a view of a sticker, at most once per device per VIEW_COOLDOWN_MS.
+ * Returns the view count to show immediately (optimistic — Firestore sync
+ * will confirm it shortly after for everyone, including this device).
+ */
+const registerView = pin => {
+  const baseViews = pin.views || 0;
+  const onCooldown = Date.now() - getLastViewed(pin.id) < VIEW_COOLDOWN_MS;
+  if (onCooldown) return baseViews;
+  setLastViewed(pin.id);
+  if (cloudEnabled && db) {
+    db.collection('pins').doc(pin.id).update({
+      views: firebase.firestore.FieldValue.increment(1)
+    }).catch(e => logCloudError('View count update failed:', e));
+  }
+  return baseViews + 1;
+};
 
 // ── Image compression ──
 const compress = (url, maxW = 900, q = .65) => new Promise(res => {
@@ -185,11 +423,60 @@ function startApp() {
     viewMeta: $('vmeta'),
     viewName: $('vname'),
     viewPhoto: $('vphoto'),
-    viewSheet: $('vsheet')
+    viewSheet: $('vsheet'),
+    viewViews: $('vviews'),
+    worldBadge: $('world-badge'),
+    worldBadgeCount: $('world-badge-count')
   };
 
   // ── Set button avatar ──
   ui.buttonAvatar.src = RUBEN;
+
+  // ── Rotate country count and daily princess ──
+  const badgeState = {
+    countryCountReady: false,
+    dailyPrincessAvailable: false,
+    showDailyPrincess: false,
+    timer: null
+  };
+
+  const applyRotatingBadgeVisibility = () => {
+    if (!badgeState.countryCountReady) {
+      ui.worldBadge.hidden = true;
+      ui.dailyPrincess.hidden = true;
+      return;
+    }
+    const showDaily = badgeState.dailyPrincessAvailable && badgeState.showDailyPrincess;
+    ui.dailyPrincess.hidden = !showDaily;
+    ui.worldBadge.hidden = showDaily;
+  };
+
+  const restartBadgeRotation = () => {
+    if (badgeState.timer) window.clearInterval(badgeState.timer);
+    badgeState.timer = null;
+    badgeState.showDailyPrincess = false;
+    applyRotatingBadgeVisibility();
+    if (!badgeState.countryCountReady || !badgeState.dailyPrincessAvailable) return;
+    badgeState.timer = window.setInterval(() => {
+      badgeState.showDailyPrincess = !badgeState.showDailyPrincess;
+      applyRotatingBadgeVisibility();
+    }, 5000);
+  };
+
+  const setDailyPrincessAvailable = available => {
+    if (badgeState.dailyPrincessAvailable === available) return;
+    badgeState.dailyPrincessAvailable = available;
+    restartBadgeRotation();
+  };
+
+  const setCountryCountReady = () => {
+    if (badgeState.countryCountReady) {
+      applyRotatingBadgeVisibility();
+      return;
+    }
+    badgeState.countryCountReady = true;
+    restartBadgeRotation();
+  };
 
   // ── Map ──
   const map = L.map('map', {
@@ -262,6 +549,7 @@ function startApp() {
   });
   if (ui.counterNum) ui.counterNum.textContent = pins.length;
   renderDailyPrincess();
+  updateWorldCoverage(pins, ui, setCountryCountReady);
 };
 
   const renderDailyPrincess = () => {
@@ -282,8 +570,8 @@ function startApp() {
     });
 
     if (!counts.size) {
-      ui.dailyPrincess.hidden = true;
       ui.dailyPrincessMeta.textContent = '';
+      setDailyPrincessAvailable(false);
       return;
     }
 
@@ -295,7 +583,7 @@ function startApp() {
       .map(entry => entry.name);
 
     ui.dailyPrincessMeta.textContent = `${winners.join(' & ')} · ${topCount}`;
-    ui.dailyPrincess.hidden = false;
+    setDailyPrincessAvailable(true);
   };
 
   // ── Cloud: save a single pin to Firestore and Storage ──
@@ -464,7 +752,9 @@ function startApp() {
   // ── View sheet ──
   function openView(pin) {
     const photo = sanitizePhotoUrl(resolvePinPhoto(pin));
+    const viewCount = registerView(pin);
     ui.viewMeta.textContent = '📅 ' + formatPinDate(pin.date);
+    if (ui.viewViews) ui.viewViews.textContent = '👁️ ' + viewCount + ' keer bekeken';
     if (photo) { ui.viewPhoto.src = photo; ui.viewPhoto.classList.add('on'); } else { ui.viewPhoto.src = ''; ui.viewPhoto.classList.remove('on'); }
     if (pin.name) { ui.viewName.textContent = pin.name; ui.viewName.classList.add('on'); } else { ui.viewName.classList.remove('on'); }
     if (pin.comment) { ui.viewComment.textContent = '"' + pin.comment + '"'; ui.viewComment.classList.add('on'); } else { ui.viewComment.classList.remove('on'); }
@@ -493,7 +783,7 @@ function startApp() {
       nameEl.textContent = pin.name || 'Onbekend';
       const dateEl = document.createElement('div');
       dateEl.className = 'list-item-date';
-      dateEl.textContent = '📅 ' + dateStr;
+      dateEl.textContent = '📅 ' + dateStr + '  ·  👁️ ' + (pin.views || 0);
       info.appendChild(nameEl);
       info.appendChild(dateEl);
       if (pin.comment) {
@@ -516,6 +806,7 @@ function startApp() {
 
   // ── Init ──
   clearLegacyLocalState();
+  pruneViewCooldowns();
   renderPins();
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(p => map.setView([p.coords.latitude, p.coords.longitude], 14), () => {}, { timeout: 6000, enableHighAccuracy: true });
