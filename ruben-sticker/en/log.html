@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<base href="../">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#1a1a2e">
+<title>Ruben Sticker Log</title>
+<link rel="icon" type="image/jpeg" href="image/rub.jpg">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#1a1a2e;color:#fff;font-family:'DM Sans',system-ui,sans-serif;min-height:100vh}
+  #loading{display:none;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:16px;color:#aaa}
+  .spinner{width:32px;height:32px;border:3px solid #333;border-top-color:#FFD600;border-radius:50%;animation:spin 0.8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  header{display:flex;align-items:center;gap:12px;padding:20px}
+  header img{width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid #FFD600}
+  header h1{font-size:18px;font-weight:700;color:#FFD600}
+  header span{font-size:13px;color:#888;margin-left:auto}
+  #content{padding:0 20px 20px;max-width:680px;margin:0 auto}
+  .label{font-size:11px;font-weight:700;letter-spacing:.08em;color:#FFD600;text-transform:uppercase;margin:0 0 12px}
+  .card{background:#252545;border-radius:12px;overflow:hidden;display:flex;margin-bottom:24px;border:1.5px solid #FFD600}
+  .card img{width:120px;min-height:100px;object-fit:cover;flex-shrink:0;background:#1a1a2e}
+  .card.top{flex-direction:column}
+  .card.top img{width:100%;aspect-ratio:4/3;min-height:unset}
+  .body{padding:12px;display:flex;flex-direction:column;gap:4px;min-width:0}
+  .name{font-size:16px;font-weight:700;color:#FFD600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .card.top .name{font-size:20px}
+  .date{font-size:12px;color:#888}
+  .comment{font-size:13px;color:#bbb;font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .coords{font-size:11px;color:#555;margin-top:2px}
+  #list{display:flex;flex-direction:column;gap:10px}
+  #list .card{margin:0;border-color:#333}
+  #empty{text-align:center;color:#666;padding:60px 0}
+ #lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:999;align-items:center;justify-content:center;cursor:zoom-out}
+#lightbox img{max-width:95vw;max-height:95vh;object-fit:contain;border-radius:8px}
+</style>
+</head>
+ <div id="lightbox"><img id="lb-img" src="" alt=""></div>
+<body>
+<div id="loading"><div class="spinner"></div><span>Loading...</span></div>
+<div id="main" style="display:none">
+  <header>
+    <img src="image/rub.jpg" alt="">
+    <h1>Sticker Log</h1>
+    <span id="count"></span>
+  </header>
+  <div id="content">
+    <div class="label">Latest sticker</div>
+    <div id="top"></div>
+    <div class="label">All stickers</div>
+    <div id="list"></div>
+    <div id="empty" style="display:none">No stickers yet.</div>
+  </div>
+</div>
+<script src="js/gate.js"></script>
+<script>
+const RUBEN = 'image/rub.jpg';
+const FBV = '10.11.1';
+const fmt = v => new Date(v).toLocaleDateString('en-GB',{weekday:'short',year:'numeric',month:'short',day:'numeric'}) + ' · ' + new Date(v).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+const loadScript = src => new Promise((res,rej) => { const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=rej;document.head.appendChild(s); });
+const card = (pin, top) => `
+  <div class="card${top?' top':''}">
+    <img src="${pin.photoUrl||RUBEN}" onerror="this.src='${RUBEN}'" alt="" style="cursor:zoom-in" onclick="openLightbox(this.src)">
+    <div class="body">
+      <div class="name">${pin.name||'Unknown'}</div>
+      <div class="date">📅 ${fmt(pin.date)}</div>
+      ${pin.comment?`<div class="comment">"${pin.comment}"</div>`:''}
+      <div class="coords">📍 ${Number(pin.lat).toFixed(5)}, ${Number(pin.lng).toFixed(5)}</div>
+    </div>
+  </div>`;
+
+function openLightbox(src) {
+  const lb = document.getElementById('lightbox');
+  document.getElementById('lb-img').src = src;
+  lb.style.display = 'flex';
+}
+document.getElementById('lightbox').addEventListener('click', () => {
+  document.getElementById('lightbox').style.display = 'none';
+});
+
+async function init() {
+  const hasCookie = document.cookie.split(';').some(c => c.trim().startsWith('rsm_access='));
+  if (!hasCookie) { window.location.href = '/en/'; return; }
+
+  if (window.firebaseConfigReady) await window.firebaseConfigReady;
+  if (typeof firebaseConfig==='undefined'||!firebaseConfig.apiKey) { window.location.href='/en/'; return; }
+  document.getElementById('loading').style.display='flex';
+  const base=`https://www.gstatic.com/firebasejs/${FBV}`;
+  await loadScript(`${base}/firebase-app-compat.js`);
+  await loadScript(`${base}/firebase-auth-compat.js`);
+  await loadScript(`${base}/firebase-firestore-compat.js`);
+  if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+  await firebase.auth().signInAnonymously();
+  firebase.firestore().collection('pins').onSnapshot(snap => {
+    const pins=[]; snap.forEach(d=>pins.push(d.data()));
+    pins.sort((a,b)=>new Date(b.date)-new Date(a.date));
+    document.getElementById('loading').style.display='none';
+    document.getElementById('main').style.display='block';
+    document.getElementById('count').textContent=pins.length+' stickers';
+    document.getElementById('top').innerHTML=pins.length?card(pins[0],true):'';
+    document.getElementById('list').innerHTML=pins.slice(1).map(p=>card(p,false)).join('');
+    document.getElementById('empty').style.display=pins.length?'none':'block';
+  });
+}
+init();
+</script>
+</body>
+</html>
